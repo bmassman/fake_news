@@ -1,0 +1,6 @@
+# Compiled Python bytecode
+*.pyc
+
+# Temporary text files
+*~
+
