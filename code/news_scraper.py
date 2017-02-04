@@ -53,24 +53,55 @@ def is_new(curs, article):
     New is defined as not being already present in the database with a
     publish date of 1/Feb/2017 or later.
     """
-    if article.publish_date < dt.datetime(2017, 2, 1):
+    pub_date = article.publish_date
+    # TODO: handle dates with and without tz information
+    if pub_date is None or pub_date < dt.datetime(2017, 2, 1):
         return False
     command = ('SELECT * '
                'FROM articles '
                'WHERE url=?')
-    curs.execute(command, article.url)
+    curs.execute(command, (article.url,))
     return curs.fetchone() is None
 
 
-news_sites = build_news_sources(URL_FILE_NAME)
-newspaper.news_pool.set(news_sites, threads_per_source=2)
-newspaper.news_pool.join()
+def build_config():
+    """Return newspaper configuration."""
+    config = newspaper.Config()
+    config.memoize_articles = False
+    config.fetch_images = False
+    return config
+
+
+config = build_config()
+
+# news_sites = build_news_sources(URL_FILE_NAME)
+# newspaper.news_pool.set(news_sites, threads_per_source=2)
+# newspaper.news_pool.join()
+
+news_sites = [newspaper.build('http://cnn.com', config=config)]
+
+inserts = 0
+bad_articles = 0
 
 with closing(get_db_conn(DB_FILE_NAME)) as conn:
     curs = conn.cursor()
     for news_site in news_sites:
-        for article in news_site.articles:
-            article.parse()
-            if is_new(curs, article):
-                insert_article(curs, article)
+        articles = news_site.articles
+        print(f'Starting {len(articles)} downloads from {news_site.url}')
+        for article in articles:
+            try:
+                article.download()
+                article.parse()
+            except ArticleException:
+                bad_articles += 1
+            else:
+                if is_new(curs, article):
+                    insert_article(curs, article)
+                    inserts += 1
+            if inserts % 50 == 0:
+                conn.commit()
+    conn.commit()
+
+print(f'{inserts} articles inserted')
+print(f'{bad_articles} were not downloaded')
 
