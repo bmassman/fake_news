@@ -1,1 +1,15 @@
-https://cnn.com
+http://yahoo.com/news/
+http://news.google.com
+http://huffingtonpost.com
+http://cnn.com
+http://nytimes.com
+http://www.foxnews.com
+http://www.nbcnews.com
+http://dailymail.co.uk/ushome/
+http://www.washingtonpost.com
+http://www.theguardian.com/us
+http://www.wsj.com
+http://abcnews.go.com
+http://www.bbc.com/news
+http://www.usatoday.com
+http://www.latimes.com

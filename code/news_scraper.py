@@ -7,15 +7,29 @@ import os
 import datetime as dt
 from contextlib import closing
 import newspaper
+import pytz
 
 URL_FILE_NAME = 'news_sites.txt'
 DB_FILE_NAME = 'articles.db'
 
 
+def get_configuration():
+    """Return configuration for news site scraping."""
+    conf = newspaper.Config()
+    conf.memoize_articles = False
+    conf.fetch_images = False
+    conf.MIN_WORD_COUNT = 1
+    conf.MAX_TEXT = 6 * 5000
+    return conf
+
+
 def build_news_sources(url_file_name):
     """Return list of built news sites from url_file_name."""
-    with open(url_file_name) as news_urls:
-        return [newspaper.build(news_url) for news_url in news_urls]
+    conf = get_configuration()
+    with open(url_file_name, 'r') as f:
+        news_urls = f.read().splitlines()
+    for news_url in news_urls:
+        yield newspaper.build(news_url, config=conf)
 
 
 def build_article_db(db_file_name):
@@ -47,6 +61,15 @@ def insert_article(curs, article):
     curs.execute(command, fields)
 
 
+def is_in_db(curs, url):
+    """Return True if url is already in database, False otherwise."""
+    command = ('SELECT * '
+               'FROM articles '
+               'WHERE url=?')
+    curs.execute(command, (url,))
+    return curs.fetchone() is not None
+
+
 def is_new(curs, article):
     """
     Return True if article is new, False otherwise.
@@ -54,45 +77,41 @@ def is_new(curs, article):
     publish date of 1/Feb/2017 or later.
     """
     pub_date = article.publish_date
-    # TODO: handle dates with and without tz information
-    if pub_date is None or pub_date < dt.datetime(2017, 2, 1):
+    eastern = pytz.timezone('US/Eastern')
+    if not pub_date:
         return False
-    command = ('SELECT * '
-               'FROM articles '
-               'WHERE url=?')
-    curs.execute(command, (article.url,))
-    return curs.fetchone() is None
+    if not pub_date.tzinfo:
+        pub_date = pub_date.astimezone(eastern)
+    if pub_date < dt.datetime(2017, 2, 1, tzinfo=eastern):
+        return False
+    return True
 
 
-def build_config():
-    """Return newspaper configuration."""
-    config = newspaper.Config()
-    config.memoize_articles = False
-    config.fetch_images = False
-    return config
-
-
-config = build_config()
-
-# news_sites = build_news_sources(URL_FILE_NAME)
-# newspaper.news_pool.set(news_sites, threads_per_source=2)
-# newspaper.news_pool.join()
-
-news_sites = [newspaper.build('http://cnn.com', config=config)]
-
-inserts = 0
-bad_articles = 0
-
-with closing(get_db_conn(DB_FILE_NAME)) as conn:
-    curs = conn.cursor()
+def get_articles(curs):
+    news_sites = build_news_sources(URL_FILE_NAME)
     for news_site in news_sites:
-        articles = news_site.articles
-        print(f'Starting {len(articles)} downloads from {news_site.url}')
-        for article in articles:
+        news_site.articles[:] = [article for article in news_site.articles
+                                 if not is_in_db(curs, article.url)]
+        num_articles = len(news_site.articles)
+        print(f'Downloading {num_articles} articles from {news_site.url}')
+        for i in reversed(range(len(news_site.articles))):
+            article = news_site.articles[i]
+            yield article
+            del news_site.articles[i]
+
+
+def scrape_news():
+    """Populate database with news articles."""
+    inserts = 0
+    bad_articles = 0
+
+    with closing(get_db_conn(DB_FILE_NAME)) as conn:
+        curs = conn.cursor()
+        for article in get_articles(curs):
             try:
                 article.download()
                 article.parse()
-            except ArticleException:
+            except newspaper.ArticleException:
                 bad_articles += 1
             else:
                 if is_new(curs, article):
@@ -100,8 +119,11 @@ with closing(get_db_conn(DB_FILE_NAME)) as conn:
                     inserts += 1
             if inserts % 50 == 0:
                 conn.commit()
-    conn.commit()
+        conn.commit()
 
-print(f'{inserts} articles inserted')
-print(f'{bad_articles} were not downloaded')
+    print(f'{inserts} articles inserted')
+    print(f'{bad_articles} were not downloaded')
 
+
+if __name__ == '__main__':
+    scrape_news()

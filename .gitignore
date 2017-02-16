@@ -4,3 +4,6 @@
 # Temporary text files
 *~
 
+# Database files
+*.db
+
