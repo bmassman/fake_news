@@ -13,3 +13,5 @@ http://abcnews.go.com
 http://www.bbc.com/news
 http://www.usatoday.com
 http://www.latimes.com
+https://libertywritersnews.com
+http://prntly.com
