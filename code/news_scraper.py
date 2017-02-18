@@ -52,9 +52,9 @@ def get_db_conn(db_file_name):
 
 def insert_article(curs, article):
     """Insert relevent article fields into db."""
-    authors = ''.join(article.authors)
+    authors = ','.join(article.authors)
     publish_date = article.publish_date.isoformat()
-    tags = ''.join(article.tags)
+    tags = ','.join(article.tags)
     fields = (article.title, authors, publish_date, article.url,
               article.text, tags)
     command = 'INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?)'
