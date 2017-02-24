@@ -7,3 +7,5 @@
 # Database files
 *.db
 
+# Pycharm directory
+.idea/*

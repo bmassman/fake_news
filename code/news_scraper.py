@@ -4,6 +4,7 @@ Script to scrape internet news sites for articles.
 """
 import sqlite3
 import datetime as dt
+import typing
 from contextlib import closing
 from operator import itemgetter
 import newspaper
@@ -13,7 +14,7 @@ URL_FILE_NAME = 'news_sites.txt'
 DB_FILE_NAME = 'articles.db'
 
 
-def get_configuration():
+def get_configuration() -> newspaper.Config:
     """Return configuration for news site scraping."""
     conf = newspaper.Config()
     conf.memoize_articles = False
@@ -23,7 +24,8 @@ def get_configuration():
     return conf
 
 
-def build_news_sources(url_file_name):
+def build_news_sources(url_file_name: str) \
+        -> typing.Generator[newspaper.Source, None, None]:
     """Return list of built news sites from url_file_name."""
     conf = get_configuration()
     with open(url_file_name, 'r') as f:
@@ -32,7 +34,7 @@ def build_news_sources(url_file_name):
         yield newspaper.build(news_url, config=conf)
 
 
-def build_article_db(db_file_name):
+def build_article_db(db_file_name: str) -> sqlite3.Connection:
     """Build database for holding article information return cursor."""
     conn = sqlite3.connect(db_file_name)
     command = ('CREATE TABLE IF NOT EXISTS articles '
@@ -44,8 +46,9 @@ def build_article_db(db_file_name):
     return conn
 
 
-def insert_article(curs, article, table):
-    """Insert relevent article fields into db table."""
+def insert_article(curs: sqlite3.Cursor, article: newspaper.Article,
+                   table: str) -> None:
+    """Insert relevant article fields into db table."""
     if table == 'articles':
         authors = ','.join(article.authors)
         publish_date = article.publish_date.isoformat()
@@ -60,7 +63,7 @@ def insert_article(curs, article, table):
         curs.execute('INSERT INTO old_articles VALUES (?)', (article.url, ))
 
 
-def is_new(curs, article):
+def is_new(article: newspaper.Article) -> bool:
     """
     Return True if article is new, False otherwise.
     New is defined as a publish date of 1/Feb/2017 or later.
@@ -76,7 +79,7 @@ def is_new(curs, article):
     return True
 
 
-def get_previous_urls(curs):
+def get_previous_urls(curs: sqlite3.Cursor) -> typing.Set[str]:
     """Return set of previously downloaded, attempted or old urls."""
     curs.execute('SELECT url FROM articles')
     urls = set(map(itemgetter(0), curs.fetchall()))
@@ -87,7 +90,8 @@ def get_previous_urls(curs):
     return urls
 
 
-def get_articles(curs):
+def get_articles(curs: sqlite3.Cursor) \
+        -> typing.Generator[newspaper.Article, None, None]:
     news_sites = build_news_sources(URL_FILE_NAME)
     previous_urls = get_previous_urls(curs)
     for news_site in news_sites:
@@ -102,7 +106,7 @@ def get_articles(curs):
             del news_site.articles[i]
 
 
-def scrape_news():
+def scrape_news() -> None:
     """Populate database with news articles."""
     inserts = 0
     bad_articles = 0
@@ -118,7 +122,7 @@ def scrape_news():
                 bad_articles += 1
                 insert_article(curs, article, 'bad_articles')
             else:
-                if is_new(curs, article):
+                if is_new(article):
                     insert_article(curs, article, 'articles')
                     inserts += 1
                 else:
