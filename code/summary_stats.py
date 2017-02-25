@@ -60,7 +60,7 @@ def global_stats(articles: pd.DataFrame):
     num_sources = len(pd.value_counts(articles['base_url'], sort=False))
     print(f'Number of news sources: {num_sources}')
     mean_wc = articles['word_count'].mean()
-    print(f'Global word count: {mean_wc:.1f}')
+    print(f'Global mean word count: {mean_wc:.1f}')
     missing_authors = (articles['authors'] == '').sum()
     print(f'Missing authors: {missing_authors:,}')
     missing_titles = (articles['title'] == '').sum()
@@ -98,10 +98,10 @@ def show_stats():
     """Display statistics on articles."""
     articles = build_df()
     global_stats(articles)
-    # calculate_word_count_stats(articles)
-    # calculate_missing_values(articles)
-    # sns.kdeplot(articles['word_count'], bw=1)
-    # sns.plt.show()
+    calculate_word_count_stats(articles)
+    calculate_missing_values(articles)
+    sns.kdeplot(articles['word_count'], bw=1)
+    sns.plt.show()
 
 
 if __name__ == '__main__':
