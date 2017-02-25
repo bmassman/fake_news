@@ -77,6 +77,9 @@ def calculate_word_count_stats(articles: pd.DataFrame):
     print_full(by_source)
 
     top_sources = by_source.head(10).index
+    top_counts = by_source.reset_index()[by_source.index.isin(top_sources)]
+    sns.barplot(x='base_url', y='count', data=top_counts)
+    sns.plt.show()
     sns.boxplot(x='base_url', y='word_count',
                 data=articles[articles['base_url'].isin(top_sources)])
     sns.plt.show()
