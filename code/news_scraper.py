@@ -24,8 +24,7 @@ def get_configuration() -> newspaper.Config:
     return conf
 
 
-def build_news_sources(url_file_name: str) \
-        -> typing.Generator[newspaper.Source, None, None]:
+def build_sources(url_file_name: str) -> typing.Iterator[newspaper.Source]:
     """Return list of built news sites from url_file_name."""
     conf = get_configuration()
     with open(url_file_name, 'r') as f:
@@ -46,7 +45,8 @@ def build_article_db(db_file_name: str) -> sqlite3.Connection:
     return conn
 
 
-def insert_article(curs: sqlite3.Cursor, article: newspaper.Article,
+def insert_article(curs: sqlite3.Cursor,
+                   article: newspaper.Article,
                    table: str) -> None:
     """Insert relevant article fields into db table."""
     if table == 'articles':
@@ -90,9 +90,8 @@ def get_previous_urls(curs: sqlite3.Cursor) -> typing.Set[str]:
     return urls
 
 
-def get_articles(curs: sqlite3.Cursor) \
-        -> typing.Generator[newspaper.Article, None, None]:
-    news_sites = build_news_sources(URL_FILE_NAME)
+def get_articles(curs: sqlite3.Cursor) -> typing.Iterator[newspaper.Article]:
+    news_sites = build_sources(URL_FILE_NAME)
     previous_urls = get_previous_urls(curs)
     for news_site in news_sites:
         news_site.articles[:] = [article for article in news_site.articles
