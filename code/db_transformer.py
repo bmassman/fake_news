@@ -33,13 +33,14 @@ def multi_hot_encode(x: Sequence[str],
     return coo_matrix((data, (i, j))), dict(dummy_col)
 
 
-def vectorize_text(x: Sequence[str],
-                   prefix: str) -> (coo_matrix, Dict[str, int]):
+def tfidf_text(x: Sequence[str],
+               prefix: str,
+               ngram: int = 1) -> (coo_matrix, Dict[str, int]):
     """
     Return sparse matrix encoding of TF-IDF encoding of x and dictionary
     mapping each token to a column number.
     """
-    tfidf = TfidfVectorizer()
+    tfidf = TfidfVectorizer(ngram_range=(1, ngram))
     text = tfidf.fit_transform(x)
     token_list = tfidf.get_feature_names()
     text_map = {f'{prefix}_{token}': col
@@ -57,21 +58,32 @@ def combine(category_maps: Sequence[Dict[str, int]]) -> Dict[str, int]:
     return combined
 
 
-def transform_data() -> (coo_matrix, Dict[str, int]):
+def transform_data(*, tfidf: bool,
+                   author: bool,
+                   tags: bool,
+                   title: bool,
+                   ngram: int) -> (coo_matrix, Dict[str, int]):
     """
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
     """
     articles = clean_data()
-    authors, author_map = multi_hot_encode(articles['authors'], 'auth')
-    tags, tag_map = multi_hot_encode(articles['tags'], 'tag')
-    text, text_map = vectorize_text(articles['text'], 'text')
-    features = hstack([authors, tags, text])
-    category_map = combine([author_map, tag_map, text_map])
+    res = []
+    if author:
+        res.append(multi_hot_encode(articles['authors'], 'auth'))
+    if tags:
+        res.append(multi_hot_encode(articles['tags'], 'tag'))
+    if tfidf:
+        res.append(tfidf_text(articles['text'], 'text', ngram))
+    if title:
+        res.append(tfidf_text(articles['title'], 'title', ngram))
+    features = hstack([r[0] for r in res])
+    category_map = combine([r[1] for r in res])
     return features, category_map
 
 
 if __name__ == '__main__':
-    X, col_map = transform_data()
-    print(X)
-    print(col_map)
+    X, col_map = transform_data(tfidf=False, author=True, tags=False,
+                                title=True, ngram=1)
+    print(X.shape)
+    print(len(col_map))

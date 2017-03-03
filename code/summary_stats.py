@@ -42,6 +42,7 @@ def build_df() -> pd.DataFrame:
     with closing(sqlite3.connect(DB_FILE_NAME)) as conn:
         articles = pd.read_sql_query('select * from articles', conn)
 
+    articles = articles.replace([None], [''], regex=True)
     articles['base_url'] = articles.apply(get_url_base, axis=1)
     articles['word_count'] = articles.apply(count_words, axis=1)
     return articles
