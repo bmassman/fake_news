@@ -3,6 +3,7 @@
 Script to transform dataset to prepare for modeling.
 """
 from typing import Sequence, Dict
+from urllib.parse import urlparse
 from collections import defaultdict
 from itertools import count
 from scipy.sparse import coo_matrix, hstack
@@ -58,11 +59,19 @@ def combine(category_maps: Sequence[Dict[str, int]]) -> Dict[str, int]:
     return combined
 
 
+def ends_with_dotcom(url: str) -> int:
+    netloc = urlparse(url).netloc
+    return netloc.endswith('.com')
+
+
 def transform_data(*, tfidf: bool,
                    author: bool,
                    tags: bool,
                    title: bool,
-                   ngram: int) -> (coo_matrix, Dict[str, int]):
+                   ngram: int,
+                   is_dotcom: bool,
+                   word_count: bool,
+                   misspellings: bool) -> (coo_matrix, Dict[str, int]):
     """
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
@@ -77,6 +86,12 @@ def transform_data(*, tfidf: bool,
         res.append(tfidf_text(articles['text'], 'text', ngram))
     if title:
         res.append(tfidf_text(articles['title'], 'title', ngram))
+    if is_dotcom:
+        res.append(articles['url'].apply(ends_with_dotcom).to_sparse())
+    if word_count:
+        res.append(articles['word_count'].to_sparse())
+    if misspellings:
+        ...
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
     return features, category_map

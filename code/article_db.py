@@ -18,7 +18,10 @@ class ArticleDB:
                  author: bool = True,
                  tags: bool = True,
                  title: bool = True,
-                 ngram: int = 1) -> None:
+                 ngram: int = 1,
+                 is_dotcom: bool = True,
+                 word_count: bool = True,
+                 misspellings: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
         :param tfidf: add tfidf of article text to X
@@ -26,12 +29,18 @@ class ArticleDB:
         :param tags: add tags categorical text to X
         :param title: add title categorical text to X
         :param ngram: largest ngram to include in text and title vectorization
+        :param is_dotcom: add is_dotom column to X
+        :param word_count: add word count column to X
+        :param misspellings: add count of misspellings to X
         """
         self.tfidf = tfidf
         self.author = author
         self.tags = tags
         self.title = title
         self.ngram = ngram
+        self.is_dotcom = is_dotcom
+        self.word_count = word_count
+        self.misspellings = misspellings
         self._X = None
         self._y = None
         self.column_number = None
@@ -57,17 +66,21 @@ class ArticleDB:
 
     def _get_X(self) -> (coo_matrix, Dict[str, int]):
         """Return sparse matrix X based on object parameters."""
-        self._X, self.column_number = transform_data(tfidf=self.tfidf,
-                                                     author=self.author,
-                                                     tags=self.tags,
-                                                     title=self.title,
-                                                     ngram=self.ngram)
+        res = transform_data(tfidf=self.tfidf, author=self.author,
+                             tags=self.tags, title=self.title,
+                             ngram=self.ngram, is_dotcom=self.is_dotcom,
+                             word_count=self.word_count,
+                             misspellings=self.misspellings)
+        self._X, self.column_number = res
 
     def __repr__(self):
         db_vars = repr(self.__dict__)[1:-1]
         db_vars = db_vars.replace(': ', '=').replace("'", '')
         return f'{self.__class__}({db_vars})'
 
+
 if __name__ == '__main__':
     article_db = ArticleDB()
+    print(repr(article_db))
+    X = article_db.X
     print(repr(article_db))
