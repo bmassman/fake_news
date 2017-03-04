@@ -6,6 +6,7 @@
 
 # Database files
 *.db
+*.db-journal
 
 # Pycharm directory
 .idea/*
