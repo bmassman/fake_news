@@ -87,9 +87,10 @@ def transform_data(*, tfidf: bool,
     if title:
         res.append(tfidf_text(articles['title'], 'title', ngram))
     if is_dotcom:
-        res.append(articles['url'].apply(ends_with_dotcom).to_sparse())
+        articles['dotcom'] = articles['url'].apply(ends_with_dotcom)
+        res.append((coo_matrix(articles['dotcom']).T, {'is_dotcom': 0}))
     if word_count:
-        res.append(articles['word_count'].to_sparse())
+        res.append((coo_matrix(articles['word_count']).T, {'word_count': 0}))
     if misspellings:
         ...
     features = hstack([r[0] for r in res])

@@ -83,4 +83,4 @@ if __name__ == '__main__':
     article_db = ArticleDB()
     print(repr(article_db))
     X = article_db.X
-    print(repr(article_db))
+    print(X)
