@@ -4,6 +4,7 @@ Script to transform dataset to prepare for modeling.
 """
 import sqlite3
 import csv
+import re
 from typing import Sequence, Dict
 from urllib.parse import urlparse
 from collections import defaultdict
@@ -62,11 +63,6 @@ def combine(category_maps: Sequence[Dict[str, int]]) -> Dict[str, int]:
     return combined
 
 
-def ends_with_dotcom(url: str) -> int:
-    netloc = urlparse(url).netloc
-    return netloc.endswith('.com')
-
-
 def label_urls(urls: pd.Series) -> pd.Series:
     """
     Returns Series corresponding to article labels.
@@ -87,12 +83,20 @@ def get_labels():
         articles = pd.read_sql('select url from articles', conn)
     return label_urls(articles['url'])
 
+
+def get_domain_ending(url: str) -> str:
+    """Return ending of domain."""
+    netloc = urlparse(url).netloc
+    match = re.search(r'\.(.+?)$', netloc)
+    return match.group(1)
+
+
 def transform_data(*, tfidf: bool,
                    author: bool,
                    tags: bool,
                    title: bool,
                    ngram: int,
-                   is_dotcom: bool,
+                   domain_endings: bool,
                    word_count: bool,
                    misspellings: bool) -> (coo_matrix, Dict[str, int],
                                            coo_matrix):
@@ -112,9 +116,9 @@ def transform_data(*, tfidf: bool,
         res.append(tfidf_text(articles['text'], 'text', ngram))
     if title:
         res.append(tfidf_text(articles['title'], 'title', ngram))
-    if is_dotcom:
-        articles['dotcom'] = articles['url'].apply(ends_with_dotcom)
-        res.append((coo_matrix(articles['dotcom']).T, {'is_dotcom': 0}))
+    if domain_endings:
+        articles['domain_ending'] = articles['url'].apply(get_domain_ending)
+        res.append(multi_hot_encode(articles['domain_ending'], 'domain'))
     if word_count:
         res.append((coo_matrix(articles['word_count']).T, {'word_count': 0}))
     if misspellings:
@@ -126,7 +130,7 @@ def transform_data(*, tfidf: bool,
 
 if __name__ == '__main__':
     X, col_map, y = transform_data(tfidf=False, author=True, tags=False,
-                                   title=True, ngram=1, is_dotcom=False,
+                                   title=True, ngram=1, domain_endings=False,
                                    word_count=False, misspellings=False)
     print(X.shape)
     print(len(col_map))

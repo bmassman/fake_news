@@ -3,10 +3,9 @@
 This module defines the ArticleDB class which provides a single dispatch for
 creating a trainable dataset for modeling.
 """
-from functools import wraps
 from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
-from code.db_transformer import transform_data, get_labels
+from code.db_transformer import transform_data
 
 
 class ArticleDB:
@@ -20,7 +19,7 @@ class ArticleDB:
                  tags: bool = True,
                  title: bool = True,
                  ngram: int = 1,
-                 is_dotcom: bool = True,
+                 domain_endings: bool = True,
                  word_count: bool = True,
                  misspellings: bool = True) -> None:
         """
@@ -30,7 +29,7 @@ class ArticleDB:
         :param tags: add tags categorical text to X
         :param title: add title categorical text to X
         :param ngram: largest ngram to include in text and title vectorization
-        :param is_dotcom: add is_dotom column to X
+        :param domain_endings: add categorical for domain endings to X
         :param word_count: add word count column to X
         :param misspellings: add count of misspellings to X
         """
@@ -39,27 +38,28 @@ class ArticleDB:
         self.tags = tags
         self.title = title
         self.ngram = ngram
-        self.is_dotcom = is_dotcom
+        self.domain_endings = domain_endings
         self.word_count = word_count
         self.misspellings = misspellings
         self._X = None
         self._y = None
         self.column_number = None
 
-    def _get_values(self) -> None:
+    def _get_values(self) -> (coo_matrix, Dict[str, int], coo_matrix):
         """Return sparse matrix X based on object parameters."""
         res = transform_data(tfidf=self.tfidf, author=self.author,
                              tags=self.tags, title=self.title,
-                             ngram=self.ngram, is_dotcom=self.is_dotcom,
+                             ngram=self.ngram,
+                             domain_endings=self.domain_endings,
                              word_count=self.word_count,
                              misspellings=self.misspellings)
-        self._X, self.column_number, self._y = res
+        return res
 
     @property
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
         if self._X is None:
-            self._get_values()
+            self._X, self.column_number, self._y = self._get_values()
         return self._X
 
     @X.setter
@@ -75,13 +75,13 @@ class ArticleDB:
         self._X = None
 
     @property
-    def y(self):
+    def y(self) -> coo_matrix:
         """
         Return labels for articles.
         Fake news is 1, truthful news is 0.
         """
         if self._y is None:
-            self._get_values()
+            self._X, self.column_number, self._y = self._get_values()
         return self._y
 
     @y.setter
