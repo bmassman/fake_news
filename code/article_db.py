@@ -3,9 +3,10 @@
 This module defines the ArticleDB class which provides a single dispatch for
 creating a trainable dataset for modeling.
 """
-from typing import Dict
+from functools import wraps
+from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
-from code.db_transformer import transform_data
+from code.db_transformer import transform_data, get_labels
 
 
 class ArticleDB:
@@ -45,11 +46,20 @@ class ArticleDB:
         self._y = None
         self.column_number = None
 
+    def _get_values(self) -> None:
+        """Return sparse matrix X based on object parameters."""
+        res = transform_data(tfidf=self.tfidf, author=self.author,
+                             tags=self.tags, title=self.title,
+                             ngram=self.ngram, is_dotcom=self.is_dotcom,
+                             word_count=self.word_count,
+                             misspellings=self.misspellings)
+        self._X, self.column_number, self._y = res
+
     @property
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
-        if not self._X:
-            self._get_X()
+        if self._X is None:
+            self._get_values()
         return self._X
 
     @X.setter
@@ -64,26 +74,23 @@ class ArticleDB:
     def X(self) -> None:
         self._X = None
 
-    def _get_X(self) -> (coo_matrix, Dict[str, int]):
-        """Return sparse matrix X based on object parameters."""
-        res = transform_data(tfidf=self.tfidf, author=self.author,
-                             tags=self.tags, title=self.title,
-                             ngram=self.ngram, is_dotcom=self.is_dotcom,
-                             word_count=self.word_count,
-                             misspellings=self.misspellings)
-        self._X, self.column_number = res
-
     @property
     def y(self):
         """
         Return labels for articles.
         Fake news is 1, truthful news is 0.
         """
-        if not self._y:
-            pass
+        if self._y is None:
+            self._get_values()
+        return self._y
 
-    def _x_check(self):
-        pass
+    @y.setter
+    def y(self, value: Sequence[int]) -> None:
+        self._y = value
+
+    @y.deleter
+    def y(self):
+        self._y = None
 
     def __repr__(self):
         db_vars = repr(self.__dict__)[1:-1]
@@ -96,3 +103,5 @@ if __name__ == '__main__':
     print(repr(article_db))
     X = article_db.X
     print(X)
+    y = article_db.y
+    print(y)

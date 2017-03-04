@@ -2,10 +2,13 @@
 """
 Script to transform dataset to prepare for modeling.
 """
+import sqlite3
+import csv
 from typing import Sequence, Dict
 from urllib.parse import urlparse
 from collections import defaultdict
 from itertools import count
+import pandas as pd
 from scipy.sparse import coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
 from code.db_cleaner import clean_data
@@ -64,6 +67,26 @@ def ends_with_dotcom(url: str) -> int:
     return netloc.endswith('.com')
 
 
+def label_urls(urls: pd.Series) -> pd.Series:
+    """
+    Returns Series corresponding to article labels.
+    (1 is fake, 0 is true).
+    """
+    url_labels = defaultdict(lambda: float('nan'))
+    with open('url_labels.csv', 'r') as f:
+        reader = csv.reader(f)
+        for domain, label in reader:
+            label = float(label) if label else float('nan')
+            url_labels[domain] = label
+    return urls.apply(lambda u: url_labels[urlparse(u).netloc])
+
+
+def get_labels():
+    """Return Series with labels """
+    with sqlite3.connect('articles.db') as conn:
+        articles = pd.read_sql('select url from articles', conn)
+    return label_urls(articles['url'])
+
 def transform_data(*, tfidf: bool,
                    author: bool,
                    tags: bool,
@@ -71,12 +94,15 @@ def transform_data(*, tfidf: bool,
                    ngram: int,
                    is_dotcom: bool,
                    word_count: bool,
-                   misspellings: bool) -> (coo_matrix, Dict[str, int]):
+                   misspellings: bool) -> (coo_matrix, Dict[str, int],
+                                           coo_matrix):
     """
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
     """
     articles = clean_data()
+    articles['labels'] = get_labels()
+    articles.dropna(subset=['labels'], inplace=True)
     res = []
     if author:
         res.append(multi_hot_encode(articles['authors'], 'auth'))
@@ -95,11 +121,13 @@ def transform_data(*, tfidf: bool,
         ...
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
-    return features, category_map
+    return features, category_map, coo_matrix(articles['labels']).T
 
 
 if __name__ == '__main__':
-    X, col_map = transform_data(tfidf=False, author=True, tags=False,
-                                title=True, ngram=1)
+    X, col_map, y = transform_data(tfidf=False, author=True, tags=False,
+                                   title=True, ngram=1, is_dotcom=False,
+                                   word_count=False, misspellings=False)
     print(X.shape)
     print(len(col_map))
+    print(y)
