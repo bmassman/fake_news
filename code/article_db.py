@@ -73,6 +73,18 @@ class ArticleDB:
                              misspellings=self.misspellings)
         self._X, self.column_number = res
 
+    @property
+    def y(self):
+        """
+        Return labels for articles.
+        Fake news is 1, truthful news is 0.
+        """
+        if not self._y:
+            pass
+
+    def _x_check(self):
+        pass
+
     def __repr__(self):
         db_vars = repr(self.__dict__)[1:-1]
         db_vars = db_vars.replace(': ', '=').replace("'", '')
