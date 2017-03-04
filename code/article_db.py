@@ -40,7 +40,7 @@ class ArticleDB:
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
         if not self._X:
-           self._X, self.column_number = self._get_X()
+            self._get_X()
         return self._X
 
     @X.setter
@@ -62,3 +62,12 @@ class ArticleDB:
                                                      tags=self.tags,
                                                      title=self.title,
                                                      ngram=self.ngram)
+
+    def __repr__(self):
+        db_vars = repr(self.__dict__)[1:-1]
+        db_vars = db_vars.replace(': ', '=').replace("'", '')
+        return f'{self.__class__}({db_vars})'
+
+if __name__ == '__main__':
+    article_db = ArticleDB()
+    print(repr(article_db))
