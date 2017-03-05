@@ -63,7 +63,7 @@ def combine(category_maps: Sequence[Dict[str, int]]) -> Dict[str, int]:
     return combined
 
 
-def label_urls(urls: pd.Series) -> pd.Series:
+def label_urls(netloc: pd.Series) -> pd.Series:
     """
     Returns Series corresponding to article labels.
     (1 is fake, 0 is true).
@@ -74,14 +74,12 @@ def label_urls(urls: pd.Series) -> pd.Series:
         for domain, label in reader:
             label = float(label) if label else float('nan')
             url_labels[domain] = label
-    return urls.apply(lambda u: url_labels[urlparse(u).netloc])
+    return netloc.apply(lambda u: url_labels[u])
 
 
-def get_labels():
-    """Return Series with labels """
-    with sqlite3.connect('articles.db') as conn:
-        articles = pd.read_sql('select url from articles', conn)
-    return label_urls(articles['url'])
+def get_netloc(urls: pd.Series) -> pd.Series:
+    """Return series of netlocs from article urls."""
+    return urls.apply(lambda u: urlparse(u).netloc)
 
 
 def get_domain_ending(url: str) -> str:
@@ -91,6 +89,15 @@ def get_domain_ending(url: str) -> str:
     return match.group(1)
 
 
+def get_source_count(netlocs: pd.Series) -> coo_matrix:
+    """
+    Return coo_matrix corresponding to the count of articles in database from
+    each article's publisher.
+    """
+    source_counts = netlocs.groupby(netlocs).transform('count')
+    return coo_matrix(source_counts).T
+
+
 def transform_data(*, tfidf: bool,
                    author: bool,
                    tags: bool,
@@ -98,14 +105,16 @@ def transform_data(*, tfidf: bool,
                    ngram: int,
                    domain_endings: bool,
                    word_count: bool,
-                   misspellings: bool) -> (coo_matrix, Dict[str, int],
+                   misspellings: bool,
+                   source_count: bool) -> (coo_matrix, Dict[str, int],
                                            coo_matrix):
     """
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
     """
     articles = clean_data()
-    articles['labels'] = get_labels()
+    articles['netloc'] = get_netloc(articles['url'])
+    articles['labels'] = label_urls(articles['netloc'])
     articles.dropna(subset=['labels'], inplace=True)
     res = []
     if author:
@@ -123,6 +132,8 @@ def transform_data(*, tfidf: bool,
         res.append((coo_matrix(articles['word_count']).T, {'word_count': 0}))
     if misspellings:
         ...
+    if source_count:
+        res.append((get_source_count(articles['netloc']), {'source_count': 0}))
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
     return features, category_map, coo_matrix(articles['labels']).T
@@ -131,7 +142,8 @@ def transform_data(*, tfidf: bool,
 if __name__ == '__main__':
     X, col_map, y = transform_data(tfidf=False, author=True, tags=False,
                                    title=True, ngram=1, domain_endings=False,
-                                   word_count=False, misspellings=False)
+                                   word_count=False, misspellings=False,
+                                   source_count=True)
     print(X.shape)
     print(len(col_map))
     print(y)

@@ -21,7 +21,8 @@ class ArticleDB:
                  ngram: int = 1,
                  domain_endings: bool = True,
                  word_count: bool = True,
-                 misspellings: bool = True) -> None:
+                 misspellings: bool = True,
+                 source_count: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
         :param tfidf: add tfidf of article text to X
@@ -32,6 +33,8 @@ class ArticleDB:
         :param domain_endings: add categorical for domain endings to X
         :param word_count: add word count column to X
         :param misspellings: add count of misspellings to X
+        :param source_count: add count of articles from the articles' source
+                             to X
         """
         self.tfidf = tfidf
         self.author = author
@@ -41,6 +44,7 @@ class ArticleDB:
         self.domain_endings = domain_endings
         self.word_count = word_count
         self.misspellings = misspellings
+        self.source_count = source_count
         self._X = None
         self._y = None
         self.column_number = None
@@ -52,7 +56,8 @@ class ArticleDB:
                              ngram=self.ngram,
                              domain_endings=self.domain_endings,
                              word_count=self.word_count,
-                             misspellings=self.misspellings)
+                             misspellings=self.misspellings,
+                             source_count=self.source_count)
         return res
 
     @property
