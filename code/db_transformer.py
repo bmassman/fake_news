@@ -136,7 +136,7 @@ def transform_data(*, tfidf: bool,
         res.append((get_source_count(articles['netloc']), {'source_count': 0}))
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
-    return features, category_map, coo_matrix(articles['labels']).T
+    return features, category_map, articles['labels']
 
 
 if __name__ == '__main__':
