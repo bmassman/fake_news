@@ -11,7 +11,6 @@ from itertools import count
 import pandas as pd
 from scipy.sparse import coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
-from code.db_cleaner import clean_data
 
 
 def multi_hot_encode(x: Sequence[str],
@@ -97,7 +96,7 @@ def get_source_count(netlocs: pd.Series) -> coo_matrix:
     return coo_matrix(source_counts).T
 
 
-def transform_data(*, tfidf: bool,
+def transform_data(articles, *, tfidf: bool,
                    author: bool,
                    tags: bool,
                    title: bool,
@@ -111,7 +110,6 @@ def transform_data(*, tfidf: bool,
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
     """
-    articles = clean_data()
     articles['netloc'] = get_netloc(articles['url'])
     articles['labels'] = label_urls(articles['netloc'])
     articles.dropna(subset=['labels'], inplace=True)
@@ -136,13 +134,3 @@ def transform_data(*, tfidf: bool,
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
     return features, category_map, articles['labels']
-
-
-if __name__ == '__main__':
-    X, col_map, y = transform_data(tfidf=False, author=True, tags=False,
-                                   title=True, ngram=1, domain_endings=False,
-                                   word_count=False, misspellings=False,
-                                   source_count=True)
-    print(X.shape)
-    print(len(col_map))
-    print(y)

@@ -62,7 +62,8 @@ def article_trainers():
     """
     print('Getting Data...')
     articles = ArticleDB(domain_endings=False, author=False,
-                         source_count=False)
+                         source_count=False, start_date='2017-03-01',
+                         end_date='2017-03-05')
     articles.X
     print('Starting Training')
     train_model(articles, DecisionTreeClassifier, {})

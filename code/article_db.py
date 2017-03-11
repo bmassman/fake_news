@@ -3,9 +3,10 @@
 This module defines the ArticleDB class which provides a single dispatch for
 creating a trainable dataset for modeling.
 """
-from typing import Dict, Sequence, Union
-from datetime import datetime
+from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
+from code.build_df import build_df
+from code.db_cleaner import clean_data
 from code.db_transformer import transform_data
 
 
@@ -14,8 +15,8 @@ class ArticleDB:
     Provides data structure and methods to enable training models for fake
     news detection.
     """
-    def __init__(self, *, start_date: Union[str, datetime] = None,
-                 end_date: Union[str, datetime] = None,
+    def __init__(self, *, start_date: str = None,
+                 end_date: str = None,
                  tfidf: bool = True,
                  author: bool = True,
                  tags: bool = True,
@@ -27,8 +28,10 @@ class ArticleDB:
                  source_count: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
-        :param start_date: first date to include in article dataset
-        :param end_date: last date to include in article dataset
+        :param start_date: first date to include in article dataset with format
+                           'YYYY-MMM-DD'
+        :param end_date: last date to include in article dataset with format
+                         'YYYY-MM-DD'
         :param tfidf: add tfidf of article text to X
         :param author: add author categorical text to X
         :param tags: add tags categorical text to X
@@ -57,7 +60,9 @@ class ArticleDB:
 
     def _get_values(self) -> (coo_matrix, Dict[str, int], coo_matrix):
         """Return sparse matrix X based on object parameters."""
-        res = transform_data(tfidf=self.tfidf, author=self.author,
+        df = build_df(self.start_date, self.end_date)
+        df = clean_data(df)
+        res = transform_data(df, tfidf=self.tfidf, author=self.author,
                              tags=self.tags, title=self.title,
                              ngram=self.ngram,
                              domain_endings=self.domain_endings,
