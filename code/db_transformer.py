@@ -35,12 +35,12 @@ def multi_hot_encode(x: Sequence[str],
             data.append(1)
             i.append(row)
             j.append(dummy_col[prepended])
-    return coo_matrix((data, (i, j))), dict(dummy_col)
+    return coo_matrix((data, (i, j))), {v: k for k, v in dummy_col.items()}
 
 
 def tfidf_text(x: Sequence[str],
                prefix: str,
-               ngram: int = 1) -> (coo_matrix, Dict[str, int]):
+               ngram: int = 1) -> (coo_matrix, Dict[int, str]):
     """
     Return sparse matrix encoding of TF-IDF encoding of x and dictionary
     mapping each token to a column number.
@@ -48,17 +48,17 @@ def tfidf_text(x: Sequence[str],
     tfidf = TfidfVectorizer(ngram_range=(1, ngram))
     text = tfidf.fit_transform(x)
     token_list = tfidf.get_feature_names()
-    text_map = {f'{prefix}_{token}': col
+    text_map = {col: f'{prefix}_{token}'
                 for col, token in enumerate(token_list)}
     return text, text_map
 
 
-def combine(category_maps: Sequence[Dict[str, int]]) -> Dict[str, int]:
+def combine(category_maps: Sequence[Dict[int, str]]) -> Dict[int, str]:
     """Return combined dictionary for mapping categories to column number."""
     combined = category_maps[0]
     for category_map in category_maps[1:]:
         offset = len(combined)
-        offset_map = {cat: col + offset for cat, col in category_map.items()}
+        offset_map = {col + offset: cat for col, cat in category_map.items()}
         combined.update(offset_map)
     return combined
 
@@ -129,11 +129,11 @@ def transform_data(*, tfidf: bool,
         articles['domain_ending'] = articles['url'].apply(get_domain_ending)
         res.append(multi_hot_encode(articles['domain_ending'], 'domain'))
     if word_count:
-        res.append((coo_matrix(articles['word_count']).T, {'word_count': 0}))
+        res.append((coo_matrix(articles['word_count']).T, {0: 'word_count'}))
     if misspellings:
         ...
     if source_count:
-        res.append((get_source_count(articles['netloc']), {'source_count': 0}))
+        res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
     return features, category_map, articles['labels']

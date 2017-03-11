@@ -9,6 +9,7 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model.logistic import LogisticRegression
+import numpy as np
 from code.article_db import ArticleDB
 
 
@@ -25,14 +26,21 @@ def train_model(data: ArticleDB,
     print(f'{learner_repr} with parameters {model.best_params_}:')
     print(f'\tval-accuracy: {model.best_score_}')
     print(f'\ttest-accuracy: {accuracy}')
-    variable_importance(model.best_estimator_)
+    var_imp = variable_importance(model.best_estimator_)
+    top_10_vars = np.argpartition(var_imp, -10)[-10:]
+    print('\tmost important features:')
+    for rank in range(10):
+        feature_col = top_10_vars[rank]
+        feature_name = data.column_number[feature_col]
+        feature_score = var_imp[feature_col]
+        print(f'\t\t{rank + 1}: {feature_name} {feature_score}')
 
 
-def variable_importance(estimator: Type[ClassifierMixin]) -> None:
+def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
     if hasattr(estimator, 'coef_'):
-        print(f'\tmodel coefficients: {estimator.coef_}')
+        return estimator.coef_
     if hasattr(estimator, 'feature_importances_'):
-        print(f'\tfeature importance: {estimator.feature_importances_}')
+        return estimator.feature_importances_
 
 
 def article_trainers():
