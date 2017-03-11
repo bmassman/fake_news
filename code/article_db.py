@@ -3,7 +3,8 @@
 This module defines the ArticleDB class which provides a single dispatch for
 creating a trainable dataset for modeling.
 """
-from typing import Dict, Sequence
+from typing import Dict, Sequence, Union
+from datetime import datetime
 from scipy.sparse import coo_matrix
 from code.db_transformer import transform_data
 
@@ -13,7 +14,8 @@ class ArticleDB:
     Provides data structure and methods to enable training models for fake
     news detection.
     """
-    def __init__(self, *,
+    def __init__(self, *, start_date: Union[str, datetime] = None,
+                 end_date: Union[str, datetime] = None,
                  tfidf: bool = True,
                  author: bool = True,
                  tags: bool = True,
@@ -25,6 +27,8 @@ class ArticleDB:
                  source_count: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
+        :param start_date: first date to include in article dataset
+        :param end_date: last date to include in article dataset
         :param tfidf: add tfidf of article text to X
         :param author: add author categorical text to X
         :param tags: add tags categorical text to X
@@ -36,6 +40,8 @@ class ArticleDB:
         :param source_count: add count of articles from the articles' source
                              to X
         """
+        self.start_date = start_date
+        self.end_date = end_date
         self.tfidf = tfidf
         self.author = author
         self.tags = tags
@@ -47,7 +53,7 @@ class ArticleDB:
         self.source_count = source_count
         self._X = None
         self._y = None
-        self.column_number = None
+        self.feature_names = None
 
     def _get_values(self) -> (coo_matrix, Dict[str, int], coo_matrix):
         """Return sparse matrix X based on object parameters."""
@@ -64,7 +70,7 @@ class ArticleDB:
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
         if self._X is None:
-            self._X, self.column_number, self._y = self._get_values()
+            self._X, self.feature_names, self._y = self._get_values()
         return self._X
 
     @X.setter
@@ -86,7 +92,7 @@ class ArticleDB:
         Fake news is 1, truthful news is 0.
         """
         if self._y is None:
-            self._X, self.column_number, self._y = self._get_values()
+            self._X, self.feature_names, self._y = self._get_values()
         return self._y
 
     @y.setter

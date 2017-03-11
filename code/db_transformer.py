@@ -2,7 +2,6 @@
 """
 Script to transform dataset to prepare for modeling.
 """
-import sqlite3
 import csv
 import re
 from typing import Sequence, Dict
