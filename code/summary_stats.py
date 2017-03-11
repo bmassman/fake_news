@@ -2,50 +2,9 @@
 """
 Script to produce summary statistics for news articles.
 """
-import sqlite3
-import re
-from contextlib import closing
-from urllib.parse import urlparse
 import pandas as pd
 import seaborn as sns
-
-DB_FILE_NAME = 'articles.db'
-
-
-def get_url_base(row):
-    """Return base url from article row."""
-    url = row['url']
-    domain_ending = re.compile(r'\.[a-z]{2,3}$')
-    domain_prefix = re.compile(r'^[a-z]+\.')
-    domains_to_keep = {'wsj', 'cnn', 'cbs', 'nbc', 'bbc', 'de'}
-
-    net_loc = urlparse(url).netloc
-    while net_loc.startswith('www.'):
-        net_loc = net_loc[4:]
-    while True:
-        match = domain_ending.search(net_loc)
-        if not match or match.group(0) in domains_to_keep:
-            break
-        net_loc = domain_ending.sub('', net_loc)
-    net_loc = domain_prefix.sub('', net_loc)
-    return net_loc
-
-
-def count_words(row):
-    """Count words in text from article row."""
-    text = row['text']
-    return len(text.split())
-
-
-def build_df() -> pd.DataFrame:
-    """Build dataframe with derived fields."""
-    with closing(sqlite3.connect(DB_FILE_NAME)) as conn:
-        articles = pd.read_sql_query('select * from articles', conn)
-
-    articles = articles.replace([None], [''], regex=True)
-    articles['base_url'] = articles.apply(get_url_base, axis=1)
-    articles['word_count'] = articles.apply(count_words, axis=1)
-    return articles
+from code.build_df import build_df
 
 
 def print_full(x):
