@@ -74,3 +74,4 @@ http://nevo.news/
 http://newcenturytimes.com/
 http://www.newswithviews.com/
 http://occupydemocrats.com/
+https://www.abqjournal.com/
