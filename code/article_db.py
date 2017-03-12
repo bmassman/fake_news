@@ -5,6 +5,8 @@ creating a trainable dataset for modeling.
 """
 from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
+from code.build_df import build_df
+from code.db_cleaner import clean_data
 from code.db_transformer import transform_data
 
 
@@ -13,7 +15,8 @@ class ArticleDB:
     Provides data structure and methods to enable training models for fake
     news detection.
     """
-    def __init__(self, *,
+    def __init__(self, *, start_date: str = None,
+                 end_date: str = None,
                  tfidf: bool = True,
                  author: bool = True,
                  tags: bool = True,
@@ -25,6 +28,10 @@ class ArticleDB:
                  source_count: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
+        :param start_date: first date to include in article dataset with format
+                           'YYYY-MMM-DD'
+        :param end_date: last date to include in article dataset with format
+                         'YYYY-MM-DD'
         :param tfidf: add tfidf of article text to X
         :param author: add author categorical text to X
         :param tags: add tags categorical text to X
@@ -36,6 +43,8 @@ class ArticleDB:
         :param source_count: add count of articles from the articles' source
                              to X
         """
+        self.start_date = start_date
+        self.end_date = end_date
         self.tfidf = tfidf
         self.author = author
         self.tags = tags
@@ -47,11 +56,13 @@ class ArticleDB:
         self.source_count = source_count
         self._X = None
         self._y = None
-        self.column_number = None
+        self.feature_names = None
 
     def _get_values(self) -> (coo_matrix, Dict[str, int], coo_matrix):
         """Return sparse matrix X based on object parameters."""
-        res = transform_data(tfidf=self.tfidf, author=self.author,
+        df = build_df(self.start_date, self.end_date)
+        df = clean_data(df)
+        res = transform_data(df, tfidf=self.tfidf, author=self.author,
                              tags=self.tags, title=self.title,
                              ngram=self.ngram,
                              domain_endings=self.domain_endings,
@@ -64,7 +75,7 @@ class ArticleDB:
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
         if self._X is None:
-            self._X, self.column_number, self._y = self._get_values()
+            self._X, self.feature_names, self._y = self._get_values()
         return self._X
 
     @X.setter
@@ -86,7 +97,7 @@ class ArticleDB:
         Fake news is 1, truthful news is 0.
         """
         if self._y is None:
-            self._X, self.column_number, self._y = self._get_values()
+            self._X, self.feature_names, self._y = self._get_values()
         return self._y
 
     @y.setter

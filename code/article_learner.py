@@ -4,9 +4,11 @@ This module trains supervised learners to predict the validity of news
 articles.
 """
 from typing import Type
+from operator import itemgetter
 from sklearn.base import ClassifierMixin
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model.logistic import LogisticRegression
 import numpy as np
@@ -27,20 +29,28 @@ def train_model(data: ArticleDB,
     print(f'\tval-accuracy: {model.best_score_}')
     print(f'\ttest-accuracy: {accuracy}')
     var_imp = variable_importance(model.best_estimator_)
-    top_10_vars = np.argpartition(var_imp, -10)[-10:]
-    print('\tmost important features:')
-    for rank in range(10):
-        feature_col = top_10_vars[rank]
-        feature_name = data.column_number[feature_col]
-        feature_score = var_imp[feature_col]
-        print(f'\t\t{rank + 1}: {feature_name} {feature_score}')
+    print_top_vars(var_imp, 10, data.feature_names)
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
     if hasattr(estimator, 'coef_'):
-        return estimator.coef_
+        return estimator.coef_[0]
     if hasattr(estimator, 'feature_importances_'):
-        return estimator.feature_importances_
+        return(estimator.feature_importances_)
+
+
+def print_top_vars(var_imp: np.array, n: int, feature_names: dict) -> None:
+    """Fetch, order, and print top n model variables."""
+    top_n_vars = np.argpartition(var_imp, -n)[-n:]
+    top_n_map = {}
+    for feature_col in top_n_vars:
+        feature_name = feature_names[feature_col]
+        feature_score = var_imp[feature_col]
+        top_n_map[feature_name] = feature_score
+    top_n_ordered = sorted(top_n_map.items(), key=itemgetter(1), reverse=True)
+    print('\tmost important features:')
+    for rank, (feature_name, feature_score) in enumerate(top_n_ordered):
+        print(f'\t\t{rank + 1}: {feature_name} = {feature_score}')
 
 
 def article_trainers():
@@ -48,10 +58,13 @@ def article_trainers():
     Run repeated models against article db to predict validity score for
     articles.
     """
-    articles = ArticleDB(domain_endings=False, author=False)
+    articles = ArticleDB(domain_endings=False, author=False,
+                         source_count=False, start_date='2017-03-01',
+                         end_date='2017-03-05')
     train_model(articles, DecisionTreeClassifier, {})
-    train_model(articles, MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]})
+    train_model(articles, RandomForestClassifier, {})
     train_model(articles, LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]})
+    train_model(articles, MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]})
 
 if __name__ == '__main__':
     article_trainers()
