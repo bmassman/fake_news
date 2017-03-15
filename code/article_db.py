@@ -25,6 +25,7 @@ class ArticleDB:
                  domain_endings: bool = True,
                  word_count: bool = True,
                  misspellings: bool = True,
+                 lshash: bool = True,
                  source_count: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
@@ -40,6 +41,7 @@ class ArticleDB:
         :param domain_endings: add categorical for domain endings to X
         :param word_count: add word count column to X
         :param misspellings: add count of misspellings to X
+        :param lshash: add hash of tfidf to X
         :param source_count: add count of articles from the articles' source
                              to X
         """
@@ -53,6 +55,7 @@ class ArticleDB:
         self.domain_endings = domain_endings
         self.word_count = word_count
         self.misspellings = misspellings
+        self.lshash = lshash
         self.source_count = source_count
         self._X = None
         self._y = None
@@ -68,6 +71,7 @@ class ArticleDB:
                              domain_endings=self.domain_endings,
                              word_count=self.word_count,
                              misspellings=self.misspellings,
+                             lshash=self.lshash,
                              source_count=self.source_count)
         return res
 

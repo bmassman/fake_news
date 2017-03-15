@@ -9,6 +9,7 @@ from urllib.parse import urlparse
 from collections import defaultdict
 from itertools import count
 import pandas as pd
+import random
 from scipy.sparse import coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -104,6 +105,7 @@ def transform_data(articles, *, tfidf: bool,
                    domain_endings: bool,
                    word_count: bool,
                    misspellings: bool,
+                   lshash: bool,
                    source_count: bool) -> (coo_matrix, Dict[str, int],
                                            coo_matrix):
     """
@@ -119,7 +121,8 @@ def transform_data(articles, *, tfidf: bool,
     if tags:
         res.append(multi_hot_encode(articles['tags'], 'tag'))
     if tfidf:
-        res.append(tfidf_text(articles['text'], 'text', ngram))
+        tfidfed_text, tfidf_dict = tfidf_text(articles['text'], 'text', ngram)
+        res.append((tfidfed_text, tfidf_dict))
     if title:
         res.append(tfidf_text(articles['title'], 'title', ngram))
     if domain_endings:
@@ -129,8 +132,86 @@ def transform_data(articles, *, tfidf: bool,
         res.append((coo_matrix(articles['word_count']).T, {0: 'word_count'}))
     if misspellings:
         ...
+    if lshash:
+        ...
+        try:
+            tfidfed_text
+        except NameError:
+            tfidfed_text, _ = tfidf_text(articles['text'], 'text', ngram)
+        # res.append(multi_hot_encode(get_lshash(tfidfed_text))
     if source_count:
         res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
     features = hstack([r[0] for r in res])
     category_map = combine([r[1] for r in res])
     return features, category_map, articles['labels']
+
+
+def get_lshash (text: pd.Series) -> coo_matrix:
+    """
+    Return sparse matrix encoding of LSH encoding of x and dictionary
+    mapping each token to a column number.
+    """
+    # initialise a new hash table for each hash function
+    k = 1024
+    d = 5
+    l = 64
+    lsh = LSHIndex(CosineHashFamily(d), k, l)
+    lsh.size(l)
+    LS_hash = lsh.index(text)
+    print (LS_hash)
+    return coo_matrix(LS_hash)
+
+def dot(u,v):
+    return sum(ux*vx for ux,vx in zip(u,v))
+
+class CosineHashFamily:
+
+    def __init__(self,d):
+        self.d = d
+
+    def create_hash_func(self):
+        # each CosineHash is initialised with a random projection vector
+        return CosineHash(self.rand_vec())
+
+    def rand_vec(self):
+        return [random.gauss(0,1) for i in range(self.d)]
+
+    def combine(self,hashes):
+        """ combine by treating as a bitvector """
+        return sum(2**i if h > 0 else 0 for i,h in enumerate(hashes))
+
+class CosineHash:
+
+    def __init__(self,r):
+        self.r = r
+
+    def hash(self,vec):
+        return self.sgn(dot(vec,self.r))
+
+    def sgn(self,x):
+        return int(x>0)
+
+class LSHIndex:
+
+    def __init__(self,hash_family,k,l):
+        self.hash_family = hash_family
+        self.k = k
+        self.l = l
+        self.hash_tables = []
+        self.size(l)
+
+    def size(self,l):
+        """ update the number of hash tables to be used """
+        # initialise a the hash table for the requested function
+        hash_funcs = [[self.hash_family.create_hash_func() for h in range(self.k)] for l in range(self.l,l)]
+        self.hash_tables.extend([(g,defaultdict(lambda:[])) for g in hash_funcs])
+
+    def index(self,points):
+        """ index the supplied points """
+        self.points = points
+        for g,table in self.hash_tables:
+            for ix,p in enumerate(self.points):
+                table[self.hash(g,p)].append(ix)
+
+    def hash(self,g,p):
+        return self.hash_family.combine([h.hash(p) for h in g])
