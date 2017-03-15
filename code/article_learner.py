@@ -7,6 +7,7 @@ from typing import Type
 from operator import itemgetter
 from sklearn.base import ClassifierMixin
 from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import confusion_matrix
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
@@ -23,13 +24,16 @@ def train_model(data: ArticleDB,
     X, y = data.X, data.y
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
     model = GridSearchCV(learner, param_grid).fit(X_train, y_train)
-    accuracy = model.score(X_test, y_test)
+    preds = model.predict(X_test)
+    conf_mat = confusion_matrix(y_test, preds, labels=[1, 0])
+    accuracy = np.mean(y_test == preds)
     learner_repr = repr(learner)[:repr(learner).find('(')]
     print(f'{learner_repr} with parameters {model.best_params_}:')
     print(f'\tval-accuracy: {model.best_score_}')
     print(f'\ttest-accuracy: {accuracy}')
+    print(f'\tconfusion matrix: {conf_mat}')
     var_imp = variable_importance(model.best_estimator_)
-    print_top_vars(var_imp, 10, data.feature_names)
+    print_top_vars(var_imp, 50, data.feature_names)
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
