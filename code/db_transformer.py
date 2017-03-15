@@ -121,7 +121,8 @@ def transform_data(articles, *, tfidf: bool,
     if tags:
         res.append(multi_hot_encode(articles['tags'], 'tag'))
     if tfidf:
-        res.append(tfidf_text(articles['text'], 'text', ngram))
+        tfidfed_text, tfidf_dict = tfidf_text(articles['text'], 'text', ngram)
+        res.append((tfidfed_text, tfidf_dict))
     if title:
         res.append(tfidf_text(articles['title'], 'title', ngram))
     if domain_endings:
@@ -133,7 +134,11 @@ def transform_data(articles, *, tfidf: bool,
         ...
     if lshash:
         ...
-        # res.append((get_lshash(articles['text']), {0: 'lshash'}))
+        try:
+            tfidfed_text
+        except NameError:
+            tfidfed_text, _ = tfidf_text(articles['text'], 'text', ngram)
+        # res.append(multi_hot_encode(get_lshash(tfidfed_text))
     if source_count:
         res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
     features = hstack([r[0] for r in res])
