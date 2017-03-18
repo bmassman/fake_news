@@ -20,7 +20,8 @@ from code.article_db import ArticleDB
 
 def train_model(data: ArticleDB,
                 learner: Type[ClassifierMixin],
-                param_grid: dict) -> None:
+                param_grid: dict,
+                examples: bool = False) -> None:
     """Trains classifier learner on data and reports test set accuracy."""
     learner = learner()
     X, y = data.X, data.y
@@ -38,7 +39,8 @@ def train_model(data: ArticleDB,
     print(f'\t                   {conf_mat[1]}]')
     var_imp = variable_importance(model.best_estimator_)
     print_top_vars(var_imp, 50, data.feature_names)
-    article_examples(df_test, y_test, preds)
+    if examples:
+        article_examples(df_test, y_test, preds)
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
@@ -101,7 +103,7 @@ def article_trainers():
     Run repeated models against article db to predict validity score for
     articles.
     """
-    articles = ArticleDB(domain_endings=False, author=False,
+    articles = ArticleDB(domain_endings=False, author=False, title=False,
                          source_count=False, start_date='2017-03-01',
                          end_date='2017-03-05')
     train_model(articles, DecisionTreeClassifier, {})
