@@ -5,6 +5,7 @@ creating a trainable dataset for modeling.
 """
 from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
+import pandas as pd
 from code.build_df import build_df
 from code.db_cleaner import clean_data
 from code.db_transformer import transform_data
@@ -61,11 +62,11 @@ class ArticleDB:
         self._y = None
         self.feature_names = None
 
-    def _get_values(self) -> (coo_matrix, Dict[str, int], coo_matrix):
+    def _get_values(self) -> (coo_matrix, Dict[str, int], pd.Series):
         """Return sparse matrix X based on object parameters."""
-        df = build_df(self.start_date, self.end_date)
-        df = clean_data(df)
-        res = transform_data(df, tfidf=self.tfidf, author=self.author,
+        self.df = build_df(self.start_date, self.end_date)
+        self.df = clean_data(self.df)
+        res = transform_data(self.df, tfidf=self.tfidf, author=self.author,
                              tags=self.tags, title=self.title,
                              ngram=self.ngram,
                              domain_endings=self.domain_endings,
@@ -95,7 +96,7 @@ class ArticleDB:
         self._X = None
 
     @property
-    def y(self) -> coo_matrix:
+    def y(self) -> pd.Series:
         """
         Return labels for articles.
         Fake news is 1, truthful news is 0.

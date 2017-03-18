@@ -3,8 +3,9 @@
 This module trains supervised learners to predict the validity of news
 articles.
 """
-from typing import Type
+from typing import Type, Sequence
 from operator import itemgetter
+from random import sample
 from sklearn.base import ClassifierMixin
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix
@@ -13,6 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model.logistic import LogisticRegression
 import numpy as np
+import pandas as pd
 from code.article_db import ArticleDB
 
 
@@ -22,7 +24,8 @@ def train_model(data: ArticleDB,
     """Trains classifier learner on data and reports test set accuracy."""
     learner = learner()
     X, y = data.X, data.y
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    X_train, X_test, y_train, y_test, df_train, df_test = (
+        train_test_split(X, y, data.df, test_size=0.2))
     model = GridSearchCV(learner, param_grid).fit(X_train, y_train)
     preds = model.predict(X_test)
     conf_mat = confusion_matrix(y_test, preds, labels=[1, 0])
@@ -31,16 +34,18 @@ def train_model(data: ArticleDB,
     print(f'{learner_repr} with parameters {model.best_params_}:')
     print(f'\tval-accuracy: {model.best_score_}')
     print(f'\ttest-accuracy: {accuracy}')
-    print(f'\tconfusion matrix: {conf_mat}')
+    print(f'\tconfusion matrix: [{conf_mat[0]}')
+    print(f'\t                   {conf_mat[1]}]')
     var_imp = variable_importance(model.best_estimator_)
     print_top_vars(var_imp, 50, data.feature_names)
+    article_examples(df_test, y_test, preds)
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
     if hasattr(estimator, 'coef_'):
         return estimator.coef_[0]
     if hasattr(estimator, 'feature_importances_'):
-        return(estimator.feature_importances_)
+        return estimator.feature_importances_
 
 
 def print_top_vars(var_imp: np.array, n: int, feature_names: dict) -> None:
@@ -55,6 +60,40 @@ def print_top_vars(var_imp: np.array, n: int, feature_names: dict) -> None:
     print('\tmost important features:')
     for rank, (feature_name, feature_score) in enumerate(top_n_ordered):
         print(f'\t\t{rank + 1}: {feature_name} = {feature_score}')
+
+
+def article_examples(test_articles: pd.DataFrame,
+                     true_label: Sequence[int],
+                     pred_label: Sequence[int]) -> None:
+    """
+    Print examples of TP, FP, TN, and FN classifications from trained model.
+    """
+    tp_idx = np.logical_and(true_label == 1, pred_label == 1)
+    true_positives = test_articles[tp_idx]
+    fp_idx = np.logical_and(true_label == 0, pred_label == 1)
+    false_positives = test_articles[fp_idx]
+    tn_idx = np.logical_and(true_label == 0, pred_label == 0)
+    true_negatives = test_articles[tn_idx]
+    fn_idx = np.logical_and(true_label == 1, pred_label == 0)
+    false_negatives = test_articles[fn_idx]
+    article_example_printer('True Positives', true_positives)
+    article_example_printer('False Positives', false_positives)
+    article_example_printer('True Negatives', true_negatives)
+    article_example_printer('False Negatives', false_negatives)
+
+
+def article_example_printer(category: str,
+                            df: pd.DataFrame,
+                            k: int = 5) -> None:
+    """Print a random selection of n articles from df."""
+    print(f'\t{category}')
+    num_rows = len(df.index)
+    if num_rows > k:
+        df = df.iloc[sample(range(num_rows), k)]
+    for row in df.itertuples():
+        print(f'\t\tTitle: {row.title}')
+        print(f'\t\tUrl: {row.url}')
+        print(f'\t\tText: {row.text}\n')
 
 
 def article_trainers():
