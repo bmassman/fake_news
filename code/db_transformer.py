@@ -107,7 +107,7 @@ def transform_data(articles, *, tfidf: bool,
                    misspellings: bool,
                    lshash: bool,
                    source_count: bool) -> (coo_matrix, Dict[str, int],
-                                           coo_matrix):
+                                           pd.Series):
     """
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
@@ -133,7 +133,6 @@ def transform_data(articles, *, tfidf: bool,
     if misspellings:
         ...
     if lshash:
-        ...
         try:
             tfidfed_text
         except NameError:
