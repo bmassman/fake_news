@@ -120,9 +120,6 @@ class ArticleDB:
 
 
 if __name__ == '__main__':
-    article_db = ArticleDB()
-    print(repr(article_db))
+    article_db = ArticleDB(start_date='01-03-2017', end_date='02-03-2017')
     X = article_db.X
-    print(X)
     y = article_db.y
-    print(y)

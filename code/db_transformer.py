@@ -4,7 +4,7 @@ Script to transform dataset to prepare for modeling.
 """
 import csv
 import re
-from typing import Sequence, Dict
+from typing import Sequence, Dict, Set
 from urllib.parse import urlparse
 from collections import defaultdict
 from itertools import count
@@ -97,6 +97,30 @@ def get_source_count(netlocs: pd.Series) -> coo_matrix:
     return coo_matrix(source_counts).T
 
 
+def count_misspellings(text: str, dictionary: Set[str]) -> float:
+    """Return proportion of misspellings in each article's text."""
+    words = re.sub(r'[^A-Za-z]', ' ', text).split()
+    misspellings = 0
+    word_count = len(words)
+    if word_count == 0:
+        return 0.0
+    for word in words:
+        if word[0].isupper():
+            continue
+        if word.lower() not in dictionary:
+            misspellings += 1
+    return misspellings / len(words)
+
+
+def get_misspellings(text: pd.Series) -> pd.Series:
+    """Return Series of misspelling counts in text."""
+    with open('Dictionary_690.csv', 'r') as f:
+        words = f.readlines()
+    words = map(lambda x: x.strip(), words)
+    dictionary = {word for word in words}
+    return text.apply(lambda x: count_misspellings(x, dictionary))
+
+
 def transform_data(articles, *, tfidf: bool,
                    author: bool,
                    tags: bool,
@@ -131,7 +155,9 @@ def transform_data(articles, *, tfidf: bool,
     if word_count:
         res.append((coo_matrix(articles['word_count']).T, {0: 'word_count'}))
     if misspellings:
-        ...
+        articles['misspellings'] = get_misspellings(articles['text'])
+        res.append((coo_matrix(articles['misspellings']).T,
+                    {0: 'misspellings'}))
     if lshash:
         try:
             tfidfed_text
