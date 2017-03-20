@@ -4,14 +4,16 @@ Script to scrape internet news sites for articles.
 """
 import sqlite3
 import datetime as dt
-import typing
+from typing import Iterator, Set
 from contextlib import closing
 from operator import itemgetter
+import csv
 import newspaper
 import pytz
 
 URL_FILE_NAME = 'news_sites.txt'
 DB_FILE_NAME = 'articles.db'
+GROUND_TRUTH_FILE_NAME = 'ground_truth_articles.csv'
 
 
 def get_configuration() -> newspaper.Config:
@@ -24,7 +26,7 @@ def get_configuration() -> newspaper.Config:
     return conf
 
 
-def build_sources(url_file_name: str) -> typing.Iterator[newspaper.Source]:
+def build_sources(url_file_name: str) -> Iterator[newspaper.Source]:
     """Return list of built news sites from url_file_name."""
     conf = get_configuration()
     with open(url_file_name, 'r') as f:
@@ -39,7 +41,9 @@ def build_article_db(db_file_name: str) -> sqlite3.Connection:
     command = ('CREATE TABLE IF NOT EXISTS articles '
                '(title, authors, publish_date, url, text, tags);'
                'CREATE TABLE IF NOT EXISTS bad_articles (url);'
-               'CREATE TABLE IF NOT EXISTS old_articles (url);')
+               'CREATE TABLE IF NOT EXISTS old_articles (url);'
+               'CREATE TABLE IF NOT EXISTS ground_truth '
+               '(title, authors, publish_date, url, text, tags, label);')
     with closing(conn.cursor()) as curs:
         curs.executescript(command)
     return conn
@@ -49,13 +53,20 @@ def insert_article(curs: sqlite3.Cursor,
                    article: newspaper.Article,
                    table: str) -> None:
     """Insert relevant article fields into db table."""
-    if table == 'articles':
+    if table == 'articles' or table == 'ground_truth':
         authors = ','.join(article.authors)
-        publish_date = article.publish_date.isoformat()
+        try:
+            publish_date = article.publish_date.isoformat()
+        except AttributeError:
+            publish_date = ''
         tags = ','.join(article.tags)
         fields = (article.title, authors, publish_date, article.url,
                   article.text, tags)
-        command = 'INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?)'
+        if table == 'articles':
+            command = 'INSERT INTO articles VALUES (?, ?, ?, ?, ?, ?)'
+        else:
+            fields += (article.label, )
+            command = 'INSERT INTO ground_truth VALUES (?, ?, ?, ?, ?, ?, ?)'
         curs.execute(command, fields)
     elif table == 'bad_articles':
         curs.execute('INSERT INTO bad_articles VALUES (?)', (article.url, ))
@@ -79,7 +90,7 @@ def is_new(article: newspaper.Article) -> bool:
     return True
 
 
-def get_previous_urls(curs: sqlite3.Cursor) -> typing.Set[str]:
+def get_previous_urls(curs: sqlite3.Cursor) -> Set[str]:
     """Return set of previously downloaded, attempted or old urls."""
     curs.execute('SELECT url FROM articles')
     urls = set(map(itemgetter(0), curs.fetchall()))
@@ -90,7 +101,20 @@ def get_previous_urls(curs: sqlite3.Cursor) -> typing.Set[str]:
     return urls
 
 
-def get_articles(curs: sqlite3.Cursor) -> typing.Iterator[newspaper.Article]:
+def get_articles(curs: sqlite3.Cursor) -> Iterator[newspaper.Article]:
+    """Yield articles from news sites and ground truth."""
+    curs.execute('SELECT url FROM ground_truth')
+    previous_urls = set(map(itemgetter(0), curs.fetchall()))
+    with open(GROUND_TRUTH_FILE_NAME, 'r') as f:
+        reader = csv.reader(f)
+        for url, label in reader:
+            if url in previous_urls:
+                continue
+            print(f'Downloading {url}')
+            article = newspaper.Article(url)
+            article.label = label
+            yield article
+            previous_urls.add(url)
     news_sites = build_sources(URL_FILE_NAME)
     previous_urls = get_previous_urls(curs)
     for news_site in news_sites:
@@ -108,6 +132,7 @@ def get_articles(curs: sqlite3.Cursor) -> typing.Iterator[newspaper.Article]:
 def scrape_news() -> None:
     """Populate database with news articles."""
     inserts = 0
+    ground_truth_inserts = 0
     bad_articles = 0
     old_articles = 0
 
@@ -121,7 +146,10 @@ def scrape_news() -> None:
                 bad_articles += 1
                 insert_article(curs, article, 'bad_articles')
             else:
-                if is_new(article):
+                if hasattr(article, 'label'):
+                    insert_article(curs, article, 'ground_truth')
+                    ground_truth_inserts += 1
+                elif is_new(article):
                     insert_article(curs, article, 'articles')
                     inserts += 1
                 else:
@@ -132,6 +160,7 @@ def scrape_news() -> None:
         conn.commit()
 
     print(f'{inserts} articles inserted')
+    print(f'{ground_truth_inserts} ground truth articles inserted')
     print(f'{bad_articles} were not downloaded')
     print(f'{old_articles} were too old for database')
 
