@@ -10,7 +10,7 @@ from collections import defaultdict
 from itertools import count
 import pandas as pd
 import random
-from scipy.sparse import coo_matrix, hstack
+from scipy.sparse import csr_matrix, coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
@@ -121,7 +121,9 @@ def get_misspellings(text: pd.Series) -> pd.Series:
     return text.apply(lambda x: count_misspellings(x, dictionary))
 
 
-def transform_data(articles, *, tfidf: bool,
+def transform_data(articles: pd.DataFrame,
+                   ground_truth: pd.DataFrame, *,
+                   tfidf: bool,
                    author: bool,
                    tags: bool,
                    title: bool,
@@ -130,15 +132,20 @@ def transform_data(articles, *, tfidf: bool,
                    word_count: bool,
                    misspellings: bool,
                    lshash: bool,
-                   source_count: bool) -> (coo_matrix, Dict[str, int],
-                                           pd.Series):
+                   source_count: bool) -> (csr_matrix, csr_matrix,
+                                           Dict[str, int],
+                                           pd.Series, pd.Series):
     """
     Return sparse matrix of features for modeling and dict mapping categories
     to column numbers.
     """
     articles['netloc'] = get_netloc(articles['url'])
+    ground_truth['netloc'] = get_netloc(ground_truth['url'])
     articles['labels'] = label_urls(articles['netloc'])
+    ground_truth['labels'] = ground_truth['labels'].apply(pd.to_numeric)
     articles.dropna(subset=['labels'], inplace=True)
+    articles_end = len(articles.index)
+    articles = articles.append(ground_truth, ignore_index=True)
     res = []
     if author:
         res.append(multi_hot_encode(articles['authors'], 'auth'))
@@ -157,18 +164,18 @@ def transform_data(articles, *, tfidf: bool,
     if misspellings:
         articles['misspellings'] = get_misspellings(articles['text'])
         res.append((coo_matrix(articles['misspellings']).T,
-                    {0: 'misspellings'}))
+                   {0: 'misspellings'}))
     if lshash:
-        try:
-            tfidfed_text
-        except NameError:
+        if not tfidf:
             tfidfed_text, _ = tfidf_text(articles['text'], 'text', ngram)
         # res.append(multi_hot_encode(get_lshash(tfidfed_text))
     if source_count:
         res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
-    features = hstack([r[0] for r in res])
+    features = hstack([r[0] for r in res]).tocsr()
     category_map = combine([r[1] for r in res])
-    return features, category_map, articles['labels']
+    articles.drop(articles.index[articles_end:], inplace=True)
+    return (features[:articles_end, :], features[articles_end:, :],
+            category_map, articles['labels'], ground_truth['labels'])
 
 
 def get_lshash (text: pd.Series) -> coo_matrix:

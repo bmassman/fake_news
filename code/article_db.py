@@ -61,12 +61,19 @@ class ArticleDB:
         self._X = None
         self._y = None
         self.feature_names = None
+        self.ground_truth_X = None
+        self.ground_truth_y = None
+        self.df = None
+        self.ground_truth = None
 
     def _get_values(self) -> (coo_matrix, Dict[str, int], pd.Series):
         """Return sparse matrix X based on object parameters."""
-        self.df = build_df(self.start_date, self.end_date)
+        self.df = build_df('articles', self.start_date, self.end_date)
+        self.ground_truth = build_df('ground_truth')
         self.df = clean_data(self.df)
-        res = transform_data(self.df, tfidf=self.tfidf, author=self.author,
+        self.ground_truth = clean_data(self.ground_truth)
+        res = transform_data(self.df, self.ground_truth,
+                             tfidf=self.tfidf, author=self.author,
                              tags=self.tags, title=self.title,
                              ngram=self.ngram,
                              domain_endings=self.domain_endings,
@@ -80,7 +87,8 @@ class ArticleDB:
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
         if self._X is None:
-            self._X, self.feature_names, self._y = self._get_values()
+            (self._X, self.ground_truth_X, self.feature_names,
+             self._y, self.ground_truth_y) = self._get_values()
         return self._X
 
     @X.setter
@@ -102,7 +110,8 @@ class ArticleDB:
         Fake news is 1, truthful news is 0.
         """
         if self._y is None:
-            self._X, self.feature_names, self._y = self._get_values()
+            (self._X, self.ground_truth_X, self.feature_names,
+             self._y, self.ground_truth_y) = self._get_values()
         return self._y
 
     @y.setter

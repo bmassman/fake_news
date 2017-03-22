@@ -38,11 +38,12 @@ def count_words(row):
     return len(text.split())
 
 
-def build_df(start_date: Optional[datetime] = None,
+def build_df(table: str = 'articles',
+             start_date: Optional[datetime] = None,
              end_date: Optional[datetime] = None) -> pd.DataFrame:
     """Build dataframe with derived fields."""
     with closing(sqlite3.connect(DB_FILE_NAME)) as conn:
-        articles = pd.read_sql_query('select * from articles', conn)
+        articles = pd.read_sql_query(f'select * from {table}', conn)
     articles['date'] = pd.to_datetime(articles['publish_date'])
     if start_date:
         articles = articles.loc[articles['date'] > start_date]

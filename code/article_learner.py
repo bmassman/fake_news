@@ -21,12 +21,18 @@ from code.article_db import ArticleDB
 def train_model(data: ArticleDB,
                 learner: Type[ClassifierMixin],
                 param_grid: dict,
-                examples: bool = False) -> None:
+                examples: bool = False,
+                ground_truth_as_test: bool = False) -> None:
     """Trains classifier learner on data and reports test set accuracy."""
     learner = learner()
     X, y = data.X, data.y
-    X_train, X_test, y_train, y_test, df_train, df_test = (
-        train_test_split(X, y, data.df, test_size=0.2))
+    if ground_truth_as_test:
+        X_train, X_test, y_train, y_test, df_train, df_test = (
+            X, data.ground_truth_X, y, data.ground_truth_y, data.df,
+            data.ground_truth)
+    else:
+        X_train, X_test, y_train, y_test, df_train, df_test = (
+            train_test_split(X, y, data.df, test_size=0.2))
     model = GridSearchCV(learner, param_grid).fit(X_train, y_train)
     preds = model.predict(X_test)
     conf_mat = confusion_matrix(y_test, preds, labels=[1, 0])
@@ -106,10 +112,14 @@ def article_trainers():
     articles = ArticleDB(domain_endings=False, author=False, title=False,
                          source_count=False, start_date='2017-03-01',
                          end_date='2017-03-05')
-    train_model(articles, DecisionTreeClassifier, {})
-    train_model(articles, RandomForestClassifier, {})
-    train_model(articles, LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]})
-    train_model(articles, MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]})
+    train_model(articles, DecisionTreeClassifier, {},
+                ground_truth_as_test=True)
+    train_model(articles, RandomForestClassifier, {},
+                ground_truth_as_test=True)
+    train_model(articles, LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]},
+                ground_truth_as_test=True)
+    train_model(articles, MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]},
+                ground_truth_as_test=True)
 
 if __name__ == '__main__':
     article_trainers()

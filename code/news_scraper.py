@@ -43,7 +43,7 @@ def build_article_db(db_file_name: str) -> sqlite3.Connection:
                'CREATE TABLE IF NOT EXISTS bad_articles (url);'
                'CREATE TABLE IF NOT EXISTS old_articles (url);'
                'CREATE TABLE IF NOT EXISTS ground_truth '
-               '(title, authors, publish_date, url, text, tags, label);')
+               '(title, authors, publish_date, url, text, tags, labels);')
     with closing(conn.cursor()) as curs:
         curs.executescript(command)
     return conn
