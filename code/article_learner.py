@@ -13,6 +13,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model.logistic import LogisticRegression
+from sklearn.svm import LinearSVC
 import numpy as np
 import pandas as pd
 from code.article_db import ArticleDB
@@ -99,9 +100,10 @@ def article_example_printer(category: str,
     if num_rows > k:
         df = df.iloc[sample(range(num_rows), k)]
     for row in df.itertuples():
+        text = row.text.replace('\n', ' ')[:150]
         print(f'\t\tTitle: {row.title}')
         print(f'\t\tUrl: {row.url}')
-        print(f'\t\tText: {row.text}\n')
+        print(f'\t\tText: {text}\n')
 
 
 def article_trainers():
@@ -109,17 +111,26 @@ def article_trainers():
     Run repeated models against article db to predict validity score for
     articles.
     """
-    articles = ArticleDB(domain_endings=False, author=False, title=False,
-                         source_count=False, start_date='2017-03-01',
+    articles = ArticleDB(domain_endings=False,
+                         author=False,
+                         source_count=False,
+                         tags=False,
+                         misspellings=True,
+                         word_count=True,
+                         tfidf=True,
+                         ngram=1,
+                         lshash=False,
+                         title=True,
+                         start_date='2017-03-01',
                          end_date='2017-03-05')
-    train_model(articles, DecisionTreeClassifier, {},
-                ground_truth_as_test=True)
-    train_model(articles, RandomForestClassifier, {},
-                ground_truth_as_test=True)
-    train_model(articles, LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]},
-                ground_truth_as_test=True)
-    train_model(articles, MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]},
-                ground_truth_as_test=True)
+    models = [(DecisionTreeClassifier, {}),
+              (RandomForestClassifier, {}),
+              (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
+              (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
+              (LinearSVC, {})]
+    for classifier, param_grid in models:
+        train_model(articles, classifier, param_grid, examples=True,
+                    ground_truth_as_test=True)
 
 if __name__ == '__main__':
     article_trainers()
