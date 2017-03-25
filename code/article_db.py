@@ -132,3 +132,4 @@ if __name__ == '__main__':
     article_db = ArticleDB(start_date='01-03-2017', end_date='02-03-2017')
     X = article_db.X
     y = article_db.y
+    print(article_db.feature_names)

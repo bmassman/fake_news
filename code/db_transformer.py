@@ -4,16 +4,14 @@ Script to transform dataset to prepare for modeling.
 """
 import csv
 import re
-from typing import Sequence, Dict, Set
+from typing import Sequence, Dict, Set, List
 from urllib.parse import urlparse
 from collections import defaultdict
 from itertools import count
 import pandas as pd
-import random
+import numpy as np
 from scipy.sparse import csr_matrix, coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
-from code.lsh import LSH
-
 
 
 def multi_hot_encode(x: Sequence[str],
@@ -123,19 +121,26 @@ def get_misspellings(text: pd.Series) -> pd.Series:
     return text.apply(lambda x: count_misspellings(x, dictionary))
 
 
-def get_lshash (text: pd.Series) -> coo_matrix:
+def get_lshash(text: coo_matrix) -> List[str]:
     """
-    Return sparse matrix encoding of LSH encoding of x and dictionary
-    mapping each token to a column number.
+    Return list of cosine LSHs encoding text.
     """
-    # initialise a new hash table for each hash function
-    bits = 512      # number of planes per signature
-    lsh = LSH(bits,text.shape[1])       #text.shape[1] == number of features
-    for ix in range(text.shape[0]):
-        x = text.getrow(ix)
-        #c = y[ix]
-        lsh.index(x)    #, extra_data=c)
-    return coo_matrix(lsh)
+    def cosine_LSH(vector, planes):
+        """
+        Return a single cosine LSH for a particular record and given planes.
+        """
+        sig = 0
+        for plane in planes:
+            sig <<= 1
+            if vector.dot(plane) >= 0:
+                sig |= 1
+        return str(sig)
+
+    bits = 512
+    random_projections = np.random.randn(bits, text.shape[1])
+    hashes = [cosine_LSH(text.getrow(idx), random_projections)
+              for idx in range(text.shape[0])]
+    return hashes
 
 
 def transform_data(articles: pd.DataFrame,
@@ -185,7 +190,7 @@ def transform_data(articles: pd.DataFrame,
     if lshash:
         if not tfidf:
             tfidfed_text, _ = tfidf_text(articles['text'], 'text', ngram)
-            res.append(multi_hot_encode(get_lshash(tfidfed_text)))
+        res.append(multi_hot_encode(get_lshash(tfidfed_text), 'lsh'))
     if source_count:
         res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
     features = hstack([r[0] for r in res]).tocsr()
@@ -193,4 +198,3 @@ def transform_data(articles: pd.DataFrame,
     articles.drop(articles.index[articles_end:], inplace=True)
     return (features[:articles_end, :], features[articles_end:, :],
             category_map, articles['labels'], ground_truth['labels'])
-
