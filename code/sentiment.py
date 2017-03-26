@@ -155,3 +155,10 @@ if __name__ == '__main__':
     text = normalize_text(text)
     score = count_affect(text)
     print score
+    """
+    I ran this on an article that I uploaded, myText.txt.
+    Here's the response
+    {'anticipation': 46, 'wc': 1164, 'positive': 172, 'negative': 22, 
+    'sadness': 13, 'disgust': 8, 'joy': 29, 'anger': 6, 'surprise': 12, 
+    'fear': 9, 'trust': 74, 'neutral': 970}
+    """
