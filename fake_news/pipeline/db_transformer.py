@@ -68,7 +68,7 @@ def label_urls(netloc: pd.Series) -> pd.Series:
     (1 is fake, 0 is true).
     """
     url_labels = defaultdict(lambda: float('nan'))
-    with open('url_labels.csv', 'r') as f:
+    with open('fake_news/pipeline/url_labels.csv', 'r') as f:
         reader = csv.reader(f)
         for domain, label in reader:
             label = float(label) if label else float('nan')
@@ -114,7 +114,7 @@ def count_misspellings(text: str, dictionary: Set[str]) -> float:
 
 def get_misspellings(text: pd.Series) -> pd.Series:
     """Return Series of misspelling counts in text."""
-    with open('Dictionary_690.csv', 'r') as f:
+    with open('fake_news/pipeline/Dictionary_690.csv', 'r') as f:
         words = f.readlines()
     words = map(lambda x: x.strip(), words)
     dictionary = {word for word in words}

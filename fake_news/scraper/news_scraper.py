@@ -11,9 +11,9 @@ import csv
 import newspaper
 import pytz
 
-URL_FILE_NAME = 'news_sites.txt'
-DB_FILE_NAME = 'articles.db'
-GROUND_TRUTH_FILE_NAME = 'ground_truth_articles.csv'
+URL_FILE_NAME = 'fake_news/scraper/news_sites.txt'
+DB_FILE_NAME = 'fake_news/articles.db'
+GROUND_TRUTH_FILE_NAME = 'fake_news/scraper/ground_truth_articles.csv'
 
 
 def get_configuration() -> newspaper.Config:

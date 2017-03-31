@@ -16,7 +16,7 @@ from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.svm import LinearSVC
 import numpy as np
 import pandas as pd
-from code.article_db import ArticleDB
+from .article_db import ArticleDB
 
 
 def train_model(data: ArticleDB,

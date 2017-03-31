@@ -6,9 +6,9 @@ creating a trainable dataset for modeling.
 from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
 import pandas as pd
-from code.build_df import build_df
-from code.db_cleaner import clean_data
-from code.db_transformer import transform_data
+from .pipeline.build_df import build_df
+from .pipeline.db_cleaner import clean_data
+from .pipeline.db_transformer import transform_data
 
 
 class ArticleDB:
