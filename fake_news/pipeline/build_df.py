@@ -2,6 +2,7 @@
 """
 Module to build dataframe of news articles from sqlite3 database.
 """
+import os
 import re
 from urllib.parse import urlparse
 import sqlite3
@@ -10,8 +11,7 @@ from datetime import datetime
 from typing import Optional
 import pandas as pd
 
-DB_FILE_NAME = 'fake_news/articles.db'
-
+DB_FILE_NAME = os.path.join('fake_news', 'articles.db')
 
 def get_url_base(row):
     """Return base url from article row."""

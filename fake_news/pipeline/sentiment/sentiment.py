@@ -8,54 +8,40 @@ import nltk
 import string
 import pandas as pd
 import unicodedata
-from HTMLParser import HTMLParser
-
-from contractions import CONTRACTION_MAP
+from typing import Dict, Set, List
+from .contractions import CONTRACTION_MAP
 
 stopword_list = nltk.corpus.stopwords.words('english')
+
+
+def removeNonAscii(text):
+    return re.sub(r'[^\x00-\x7f]', '', text)
+
 
 def tokenize_text(text):
     tokens = nltk.word_tokenize(text)
     tokens = [token.strip() for token in tokens]
     return tokens
 
-class MLStripper(HTMLParser):
-    def __init__(self):
-        self.reset()
-        self.fed = []
-    def handle_data(self, d):
-        self.fed.append(d)
-    def get_data(self):
-        return ' '.join(self.fed)
-
-def strip_html(text):
-    html_stripper = MLStripper()
-    html_stripper.feed(text)
-    return html_stripper.get_data()
 
 def normalize_accented_characters(text):
-    text = unicodedata.normalize('NFKD',
-                                 text.decode('utf-8')
-                                 ).encode('ascii', 'ignore')
-    return text
+    text = unicodedata.normalize('NFKD', text)
+    return text.encode('ascii', 'ignore').decode('utf-8')
 
-html_parser = HTMLParser()
-def unescape_html(parser, text):
-    return parser.unescape(text)
 
 def remove_stopwords(text):
     tokens = tokenize_text(text)
-    filtered_tokens = [token for token in tokens 
-                       if token not in stopword_list]
+    filtered_tokens = [token for token in tokens if token not in stopword_list]
     filtered_text = ' '.join(filtered_tokens)
     return filtered_text
 
+
 def remove_numbers(text):
     tokens = tokenize_text(text)
-    filtered_tokens = [token for token in tokens
-                       if not unicode(token, 'utf-8').isnumeric()]
+    filtered_tokens = [token for token in tokens if not token.isnumeric()]
     filtered_text = ' '.join(filtered_tokens)
     return filtered_text
+
 
 def remove_special_characters(text):
     tokens = tokenize_text(text)
@@ -63,6 +49,7 @@ def remove_special_characters(text):
     filtered_tokens = filter(None, [pattern.sub('', token) for token in tokens])
     filtered_text = ' '.join(filtered_tokens)
     return filtered_text
+
 
 def stem_text(text):
     from nltk.stem import LancasterStemmer
@@ -72,56 +59,45 @@ def stem_text(text):
     filtered_text = ' '.join(filtered_tokens)
     return filtered_text
 
-def expand_contractions(text, contraction_mapping):
-    contraction_pattern = re.compile('({})'.format('|'.join(contraction_mapping.keys())),
-                                      flags=re.IGNORECASE|re.DOTALL)
+
+def expand_contractions(text, contraction_map):
     def expand_match(contraction):
         match = contraction.group(0)
         first_char = match[0]
-        expanded_contraction = contraction_mapping.get(match) \
-            if contraction_mapping.get(match) \
-            else contraction_mapping.get(match.lower())
+        try:
+            expanded_contraction = contraction_map[match]
+        except KeyError:
+            expanded_contraction = contraction_map[match.lower()]
         expanded_contraction = first_char + expanded_contraction[1:]
         return expanded_contraction
-    
+
+    contraction_pattern = re.compile(f'({"|".join(contraction_map.keys())})',
+                                     flags=re.IGNORECASE|re.DOTALL)
     expanded_text = contraction_pattern.sub(expand_match, text)
     return expanded_text
 
-def remove_punctuation(text):
-    return text.translate(None, string.punctuation)
 
-def removeNonAscii(text):
-    return re.sub(r'[^\x00-\x7f]',r'', text)
+def remove_punctuation(text: str,
+                       translator=str.maketrans('', '', string.punctuation)):
+    """Remove all punctuation from text."""
+    return text.translate(translator)
+
 
 def normalize_text(text):
-    # Get rid of any html
-    text = strip_html(text)
-    # Remove non-ascii characters
     text = removeNonAscii(text)
-    # Expand contracted words isn't -> is not
     text = expand_contractions(text, CONTRACTION_MAP)
-    # Remove punctuation
     text = remove_punctuation(text)
-    # Get rid of non-English letters
     text = normalize_accented_characters(text)
-    # Get rid of special characters hidden in the text
-    text = remove_special_characters(text)
-    # Lemmatize text better -> good not bet
-    # To be done
-    # all text to lower case
     text = text.lower()
-    # Remove all numbers that are just numbers
     text = remove_numbers(text)
-    # Remove stop words
     text = remove_stopwords(text)
-    # Stem text - not sure if we need to do this
-    #text = stem_text(text)
-    return(text)
+    return text
+
 
 def sentiments():
-    filename = 'NRC-Emotion-Lexicon-Wordlevel-v0.92.txt'
-    # read in sentiments
-    dataset = pd.read_csv(filename, 
+    filename = ('fake_news/pipeline/sentiment/'
+                'NRC-Emotion-Lexicon-Wordlevel-v0.92.txt')
+    dataset = pd.read_csv(filename,
                           sep = '\t', 
                           header = None, 
                           names = ['Word', 'Affect', 'Association'])
@@ -129,36 +105,41 @@ def sentiments():
     return dataset[dataset['Association'] == 1][['Word', 'Affect']]
 
     
-def count_affect(text):
-    '''
+def count_affect(text: str,
+                 affect_sets: Dict[str, Set[str]]) -> List[float]:
+    """
     text should be cleaned before running this
-    '''
-    
-    sentiment = sentiments()
-    Affects = sentiment.Affect.unique()
+    """
     tokens = tokenize_text(text)
-    counts = {}
+    counts = []
     wc = len(tokens)
-    counts['wc'] = wc
-    for affect in Affects:
-        Affect_List = set(sentiment.Word[sentiment.Affect == affect])
-        num = sum([(token in Affect_List) for token in tokens])
-        counts[affect] = num
-    counts['neutral'] = counts['wc'] - counts['positive'] - counts['negative']
+    if not wc:
+        return [0.0] * 10
+    for affect in affect_sets:
+        count = sum((token in affect_sets[affect]) for token in tokens)
+        counts.append(count / wc)
     return counts
-    
-if __name__ == '__main__':
-    # example usage
-    # Read in some text - change file name as appropriate
-    with open("myText.txt", 'r') as myfile:
-        text = myfile.read().replace('\n', '')
+
+
+def get_sentiment(text: str, affects: Dict[str, Set[str]]) -> Dict[str, float]:
+    """Return dictionary of proportion of words related to each affect."""
     text = normalize_text(text)
-    score = count_affect(text)
-    print score
-    """
-    I ran this on an article that I uploaded, myText.txt.
-    Here's the response
-    {'anticipation': 46, 'wc': 1164, 'positive': 172, 'negative': 22, 
-    'sadness': 13, 'disgust': 8, 'joy': 29, 'anger': 6, 'surprise': 12, 
-    'fear': 9, 'trust': 74, 'neutral': 970}
-    """
+    score = count_affect(text, affects)
+    return score
+
+
+def get_affect_set() -> Dict[str, Set[str]]:
+    """Return dictionary of words related to each affect."""
+    sentiment = sentiments()
+    affects = {affect: set(sentiment.Word[sentiment.Affect == affect])
+               for affect in sentiment.Affect.unique()}
+    return affects
+
+
+if __name__ == '__main__':
+    samp = "bad. bad. happy. angry. crying. can't take it any more. Good Bye!"
+    samp = normalize_text(samp)
+    print(samp)
+    affect_set = get_affect_set()
+    score = get_sentiment(samp, affect_set)
+    print(score)

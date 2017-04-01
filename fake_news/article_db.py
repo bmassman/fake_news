@@ -28,7 +28,8 @@ class ArticleDB:
                  misspellings: bool = True,
                  grammar_mistakes: bool = True,
                  lshash: bool = True,
-                 source_count: bool = True) -> None:
+                 source_count: bool = True,
+                 sentiment: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
         :param start_date: first date to include in article dataset with format
@@ -47,6 +48,7 @@ class ArticleDB:
         :param lshash: add hash of tfidf to X
         :param source_count: add count of articles from the articles' source
                              to X
+        :param sentiment: add sentiment scores to X
         """
         self.start_date = start_date
         self.end_date = end_date
@@ -61,6 +63,7 @@ class ArticleDB:
         self.grammar_mistakes = grammar_mistakes
         self.lshash = lshash
         self.source_count = source_count
+        self.sentiment = sentiment
         self._X = None
         self._y = None
         self.feature_names = None
@@ -84,7 +87,8 @@ class ArticleDB:
                              misspellings=self.misspellings,
                              grammar_mistakes=self.grammar_mistakes,
                              lshash=self.lshash,
-                             source_count=self.source_count)
+                             source_count=self.source_count,
+                             sentiment=self.sentiment)
         return res
 
     @property
