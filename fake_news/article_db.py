@@ -26,6 +26,7 @@ class ArticleDB:
                  domain_endings: bool = True,
                  word_count: bool = True,
                  misspellings: bool = True,
+                 grammar_mistakes: bool = True,
                  lshash: bool = True,
                  source_count: bool = True,
                  sentiment: bool = True) -> None:
@@ -43,6 +44,7 @@ class ArticleDB:
         :param domain_endings: add categorical for domain endings to X
         :param word_count: add word count column to X
         :param misspellings: add count of misspellings to X
+        :param grammar_mistakes: add count of grammar mistakes to X
         :param lshash: add hash of tfidf to X
         :param source_count: add count of articles from the articles' source
                              to X
@@ -58,6 +60,7 @@ class ArticleDB:
         self.domain_endings = domain_endings
         self.word_count = word_count
         self.misspellings = misspellings
+        self.grammar_mistakes = grammar_mistakes
         self.lshash = lshash
         self.source_count = source_count
         self.sentiment = sentiment
@@ -82,6 +85,7 @@ class ArticleDB:
                              domain_endings=self.domain_endings,
                              word_count=self.word_count,
                              misspellings=self.misspellings,
+                             grammar_mistakes=self.grammar_mistakes,
                              lshash=self.lshash,
                              source_count=self.source_count,
                              sentiment=self.sentiment)

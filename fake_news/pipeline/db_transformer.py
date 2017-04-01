@@ -2,6 +2,7 @@
 """
 Script to transform dataset to prepare for modeling.
 """
+import os
 import csv
 import re
 from typing import Sequence, Dict, Set, List
@@ -12,6 +13,7 @@ import pandas as pd
 import numpy as np
 from scipy.sparse import csr_matrix, coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
+import language_check
 from .sentiment.sentiment import get_affect_set, get_sentiment
 
 
@@ -69,7 +71,8 @@ def label_urls(netloc: pd.Series) -> pd.Series:
     (1 is fake, 0 is true).
     """
     url_labels = defaultdict(lambda: float('nan'))
-    with open('fake_news/pipeline/url_labels.csv', 'r') as f:
+    labels_file = os.path.join('fake_news', 'pipeline', 'url_labels.csv')
+    with open(labels_file, 'r') as f:
         reader = csv.reader(f)
         for domain, label in reader:
             label = float(label) if label else float('nan')
@@ -115,11 +118,18 @@ def count_misspellings(text: str, dictionary: Set[str]) -> float:
 
 def get_misspellings(text: pd.Series) -> pd.Series:
     """Return Series of misspelling counts in text."""
-    with open('fake_news/pipeline/Dictionary_690.csv', 'r') as f:
+    dict_file = os.path.join('fake_news', 'pipeline', 'Dictionary_690.csv')
+    with open(dict_file, 'r') as f:
         words = f.readlines()
     words = map(lambda x: x.strip(), words)
     dictionary = {word for word in words}
     return text.apply(lambda x: count_misspellings(x, dictionary))
+
+
+def get_grammar_mistakes(text: pd.Series) -> pd.Series:
+    """Return Series of grammar mistake counts in text."""
+    tool = language_check.LanguageTool('en-US')
+    return text.apply(lambda x: len(tool.check(x)))
 
 
 def get_lshash(text: coo_matrix) -> List[str]:
@@ -167,6 +177,7 @@ def transform_data(articles: pd.DataFrame,
                    domain_endings: bool,
                    word_count: bool,
                    misspellings: bool,
+                   grammar_mistakes: bool,
                    lshash: bool,
                    source_count: bool,
                    sentiment: bool) -> (csr_matrix, csr_matrix,
@@ -202,6 +213,10 @@ def transform_data(articles: pd.DataFrame,
         articles['misspellings'] = get_misspellings(articles['text'])
         res.append((coo_matrix(articles['misspellings']).T,
                    {0: 'misspellings'}))
+    if grammar_mistakes:
+        articles['grammar_mistakes'] = get_grammar_mistakes(articles['text'])
+        res.append((coo_matrix(articles['grammar_mistakes']).T,
+                    {0: 'grammar_mistakes'}))
     if lshash:
         if not tfidf:
             tfidfed_text, _ = tfidf_text(articles['text'], 'text', ngram)
