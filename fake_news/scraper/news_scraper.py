@@ -10,6 +10,7 @@ from operator import itemgetter
 import csv
 import newspaper
 import pytz
+from .article_language import detect_language
 
 URL_FILE_NAME = 'fake_news/scraper/news_sites.txt'
 DB_FILE_NAME = 'fake_news/articles.db'
@@ -135,6 +136,7 @@ def scrape_news() -> None:
     ground_truth_inserts = 0
     bad_articles = 0
     old_articles = 0
+    foreign_articles = 0
 
     with closing(build_article_db(DB_FILE_NAME)) as conn:
         curs = conn.cursor()
@@ -149,6 +151,9 @@ def scrape_news() -> None:
                 if hasattr(article, 'label'):
                     insert_article(curs, article, 'ground_truth')
                     ground_truth_inserts += 1
+                elif detect_language(article.text) != 'english':
+                    insert_article(curs, article, 'bad_articles')
+                    foreign_articles += 1
                 elif is_new(article):
                     insert_article(curs, article, 'articles')
                     inserts += 1
@@ -163,6 +168,7 @@ def scrape_news() -> None:
     print(f'{ground_truth_inserts} ground truth articles inserted')
     print(f'{bad_articles} were not downloaded')
     print(f'{old_articles} were too old for database')
+    print(f'{foreign_articles} were foreign language')
 
 
 if __name__ == '__main__':
