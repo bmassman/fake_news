@@ -46,9 +46,9 @@ def build_df(table: str = 'articles',
         articles = pd.read_sql_query(f'select * from {table}', conn)
     articles['date'] = pd.to_datetime(articles['publish_date'])
     if start_date:
-        articles = articles.loc[articles['date'] > start_date]
+        articles = articles.loc[articles['date'] >= start_date]
     if end_date:
-        articles = articles.loc[articles['date'] < end_date]
+        articles = articles.loc[articles['date'] <= end_date]
 
     articles = articles.replace([None], [''], regex=True)
     articles['base_url'] = articles.apply(get_url_base, axis=1)

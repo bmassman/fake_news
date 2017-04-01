@@ -4,6 +4,7 @@ This module defines the ArticleDB class which provides a single dispatch for
 creating a trainable dataset for modeling.
 """
 from typing import Dict, Sequence
+from copy import deepcopy
 from scipy.sparse import coo_matrix
 import pandas as pd
 from .pipeline.build_df import build_df
@@ -89,23 +90,21 @@ class ArticleDB:
                              lshash=self.lshash,
                              source_count=self.source_count,
                              sentiment=self.sentiment)
+        (self._X, self.ground_truth_X, self.feature_names,
+             self._y, self.ground_truth_y) = res
         return res
 
     @property
     def X(self) -> coo_matrix:
         """Getter method for X, the article database training data."""
         if self._X is None:
-            (self._X, self.ground_truth_X, self.feature_names,
-             self._y, self.ground_truth_y) = self._get_values()
+            self._get_values()
         return self._X
 
     @X.setter
     def X(self, value: coo_matrix) -> None:
         """Set the value of X."""
-        if isinstance(value, coo_matrix):
-            self._X = value
-        else:
-            raise ValueError('X must be set to a coo_matrix.')
+        self._X = value
 
     @X.deleter
     def X(self) -> None:
@@ -118,8 +117,7 @@ class ArticleDB:
         Fake news is 1, truthful news is 0.
         """
         if self._y is None:
-            (self._X, self.ground_truth_X, self.feature_names,
-             self._y, self.ground_truth_y) = self._get_values()
+            self._get_values()
         return self._y
 
     @y.setter
@@ -129,6 +127,22 @@ class ArticleDB:
     @y.deleter
     def y(self):
         self._y = None
+
+    def split_by_date(self, date: str):
+        """Return two ArticleDBs by splitting current ArticleDB by date."""
+        if not self._X:
+            self._get_values()
+        db1 = deepcopy(self)
+        db2 = deepcopy(self)
+        db1_rows = (self.df['date'] < date).values
+        db1.X = self._X[db1_rows]
+        db1.y = self._y[db1_rows]
+        db1.df = self.df.loc[db1_rows]
+        db2_rows = (self.df['date'] >= date).values
+        db2.X = self._X[db2_rows]
+        db2.y = self._y[db2_rows]
+        db2.df = self.df[db2_rows]
+        return db1, db2
 
     def __repr__(self):
         db_vars = repr(self.__dict__)[1:-1]

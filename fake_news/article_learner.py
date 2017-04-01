@@ -3,7 +3,7 @@
 This module trains supervised learners to predict the validity of news
 articles.
 """
-from typing import Type, Sequence
+from typing import Type, Sequence, Optional
 from operator import itemgetter
 from random import sample
 from sklearn.base import ClassifierMixin
@@ -21,17 +21,28 @@ from fake_news.article_db import ArticleDB
 
 def train_model(data: ArticleDB,
                 learner: Type[ClassifierMixin],
-                param_grid: dict,
+                param_grid: dict, *,
+                test_articles: Optional[ArticleDB] = None,
                 examples: bool = False,
                 ground_truth_as_test: bool = False,
                 probabilities: bool = False) -> None:
     """Trains classifier learner on data and reports test set accuracy."""
+    if ground_truth_as_test and test_articles:
+        raise ValueError('ground_truth_as_test must be False if test_articles'
+                         'are supplied')
     learner = learner()
     X, y = data.X, data.y
+    if ground_truth_as_test or test_articles:
+        X_train = X
+        y_train = y
     if ground_truth_as_test:
-        X_train, X_test, y_train, y_test, df_train, df_test = (
-            X, data.ground_truth_X, y, data.ground_truth_y, data.df,
-            data.ground_truth)
+        X_test = data.ground_truth_X
+        y_test = data.ground_truth_y
+        df_test = data.ground_truth
+    elif test_articles:
+        X_test = test_articles.X
+        y_test = test_articles.y
+        df_test = test_articles.df
     else:
         X_train, X_test, y_train, y_test, df_train, df_test = (
             train_test_split(X, y, data.df, test_size=0.2))
@@ -118,7 +129,7 @@ def test_probabilities(model: ClassifierMixin, X: np.array, y: np.array):
     for prob, label in zip(probs, y):
         if ((prob[0] > prob[1] and label == 1) or
                 (prob[1] > prob[0] and label == 0)):
-            print(f'\t\tprob: {prob[0]:.2f} label: {label}')
+            print(f'\t\tprob: {prob[1]:.2f} label: {label}')
 
 
 def article_trainers():
@@ -131,7 +142,7 @@ def article_trainers():
                          source_count=False,
                          tags=False,
                          misspellings=True,
-                         grammar_mistakes=True,
+                         grammar_mistakes=False,
                          word_count=True,
                          tfidf=True,
                          ngram=1,
@@ -140,14 +151,16 @@ def article_trainers():
                          sentiment=True,
                          start_date='2017-03-01',
                          end_date='2017-03-15')
+    articles, test_articles = articles.split_by_date('2017-03-12')
     models = [(DecisionTreeClassifier, {}),
               (RandomForestClassifier, {}),
               (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
               (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
               (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
     for classifier, param_grid in models:
-        train_model(articles, classifier, param_grid, examples=False,
-                    ground_truth_as_test=True, probabilities=True)
+        train_model(articles, classifier, param_grid,
+                    test_articles=test_articles, examples=False,
+                    ground_truth_as_test=False, probabilities=True)
 
 if __name__ == '__main__':
     article_trainers()
