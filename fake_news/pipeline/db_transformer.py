@@ -2,6 +2,7 @@
 """
 Script to transform dataset to prepare for modeling.
 """
+import language_check
 import csv
 import re
 from typing import Sequence, Dict, Set, List
@@ -121,6 +122,12 @@ def get_misspellings(text: pd.Series) -> pd.Series:
     return text.apply(lambda x: count_misspellings(x, dictionary))
 
 
+def get_grammar_mistakes(text: pd.Series) -> pd.Series:
+    """Return Series of grammar mistake counts in text."""
+    tool = language_check.LanguageTool('en-US')
+    return text.apply(lambda x: len(tool.check(x)))
+
+
 def get_lshash(text: coo_matrix) -> List[str]:
     """
     Return list of cosine LSHs encoding text.
@@ -153,6 +160,7 @@ def transform_data(articles: pd.DataFrame,
                    domain_endings: bool,
                    word_count: bool,
                    misspellings: bool,
+                   grammar_mistakes: bool,
                    lshash: bool,
                    source_count: bool) -> (csr_matrix, csr_matrix,
                                            Dict[str, int],
@@ -187,6 +195,10 @@ def transform_data(articles: pd.DataFrame,
         articles['misspellings'] = get_misspellings(articles['text'])
         res.append((coo_matrix(articles['misspellings']).T,
                    {0: 'misspellings'}))
+    if grammar_mistakes:
+        articles['grammar_mistakes'] = get_grammar_mistakes(articles['text'])
+        res.append((coo_matrix(articles['grammar_mistakes']).T,
+                    {0: 'grammar_mistakes'}))
     if lshash:
         if not tfidf:
             tfidfed_text, _ = tfidf_text(articles['text'], 'text', ngram)

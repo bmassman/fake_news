@@ -16,7 +16,7 @@ from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.svm import LinearSVC
 import numpy as np
 import pandas as pd
-from .article_db import ArticleDB
+from fake_news.article_db import ArticleDB
 
 
 def train_model(data: ArticleDB,
@@ -117,6 +117,7 @@ def article_trainers():
                          source_count=False,
                          tags=False,
                          misspellings=True,
+                         grammar_mistakes=True,
                          word_count=True,
                          tfidf=True,
                          ngram=1,
