@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 import pandas as pd
 
-DB_FILE_NAME = 'articles.db'
+DB_FILE_NAME = 'fake_news/articles.db'
 
 
 def get_url_base(row):

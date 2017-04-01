@@ -6,9 +6,9 @@ creating a trainable dataset for modeling.
 from typing import Dict, Sequence
 from scipy.sparse import coo_matrix
 import pandas as pd
-from code.build_df import build_df
-from code.db_cleaner import clean_data
-from code.db_transformer import transform_data
+from .pipeline.build_df import build_df
+from .pipeline.db_cleaner import clean_data
+from .pipeline.db_transformer import transform_data
 
 
 class ArticleDB:
@@ -27,7 +27,8 @@ class ArticleDB:
                  word_count: bool = True,
                  misspellings: bool = True,
                  lshash: bool = True,
-                 source_count: bool = True) -> None:
+                 source_count: bool = True,
+                 sentiment: bool = True) -> None:
         """
         Initialize parameters for ArticleDB object.
         :param start_date: first date to include in article dataset with format
@@ -45,6 +46,7 @@ class ArticleDB:
         :param lshash: add hash of tfidf to X
         :param source_count: add count of articles from the articles' source
                              to X
+        :param sentiment: add sentiment scores to X
         """
         self.start_date = start_date
         self.end_date = end_date
@@ -58,6 +60,7 @@ class ArticleDB:
         self.misspellings = misspellings
         self.lshash = lshash
         self.source_count = source_count
+        self.sentiment = sentiment
         self._X = None
         self._y = None
         self.feature_names = None
@@ -80,7 +83,8 @@ class ArticleDB:
                              word_count=self.word_count,
                              misspellings=self.misspellings,
                              lshash=self.lshash,
-                             source_count=self.source_count)
+                             source_count=self.source_count,
+                             sentiment=self.sentiment)
         return res
 
     @property

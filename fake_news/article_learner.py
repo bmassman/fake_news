@@ -16,7 +16,7 @@ from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.svm import LinearSVC
 import numpy as np
 import pandas as pd
-from code.article_db import ArticleDB
+from .article_db import ArticleDB
 
 
 def train_model(data: ArticleDB,
@@ -51,6 +51,7 @@ def train_model(data: ArticleDB,
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
+    """Return variable importances for estimator."""
     if hasattr(estimator, 'coef_'):
         return estimator.coef_[0]
     if hasattr(estimator, 'feature_importances_'):
@@ -122,12 +123,12 @@ def article_trainers():
                          lshash=False,
                          title=True,
                          start_date='2017-03-01',
-                         end_date='2017-03-05')
+                         end_date='2017-03-15')
     models = [(DecisionTreeClassifier, {}),
               (RandomForestClassifier, {}),
               (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
               (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
-              (LinearSVC, {})]
+              (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
     for classifier, param_grid in models:
         train_model(articles, classifier, param_grid, examples=True,
                     ground_truth_as_test=True)

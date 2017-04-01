@@ -12,6 +12,7 @@ import pandas as pd
 import numpy as np
 from scipy.sparse import csr_matrix, coo_matrix, hstack
 from sklearn.feature_extraction.text import TfidfVectorizer
+from .sentiment.sentiment import get_affect_set, get_sentiment
 
 
 def multi_hot_encode(x: Sequence[str],
@@ -68,7 +69,7 @@ def label_urls(netloc: pd.Series) -> pd.Series:
     (1 is fake, 0 is true).
     """
     url_labels = defaultdict(lambda: float('nan'))
-    with open('url_labels.csv', 'r') as f:
+    with open('fake_news/pipeline/url_labels.csv', 'r') as f:
         reader = csv.reader(f)
         for domain, label in reader:
             label = float(label) if label else float('nan')
@@ -114,7 +115,7 @@ def count_misspellings(text: str, dictionary: Set[str]) -> float:
 
 def get_misspellings(text: pd.Series) -> pd.Series:
     """Return Series of misspelling counts in text."""
-    with open('Dictionary_690.csv', 'r') as f:
+    with open('fake_news/pipeline/Dictionary_690.csv', 'r') as f:
         words = f.readlines()
     words = map(lambda x: x.strip(), words)
     dictionary = {word for word in words}
@@ -143,6 +144,19 @@ def get_lshash(text: coo_matrix) -> List[str]:
     return hashes
 
 
+def build_sentiments(text: pd.Series) -> coo_matrix:
+    """Return coo_matrix representing sentiment for all articles."""
+    affect_set = get_affect_set()
+    i = []
+    j = []
+    scores = []
+    for row, article_text in text.iteritems():
+        i.extend([row] * 10)
+        j.extend(list(range(10)))
+        scores.extend(get_sentiment(article_text, affect_set))
+    return coo_matrix((scores, (i, j)))
+
+
 def transform_data(articles: pd.DataFrame,
                    ground_truth: pd.DataFrame, *,
                    tfidf: bool,
@@ -154,7 +168,8 @@ def transform_data(articles: pd.DataFrame,
                    word_count: bool,
                    misspellings: bool,
                    lshash: bool,
-                   source_count: bool) -> (csr_matrix, csr_matrix,
+                   source_count: bool,
+                   sentiment: bool) -> (csr_matrix, csr_matrix,
                                            Dict[str, int],
                                            pd.Series, pd.Series):
     """
@@ -193,6 +208,12 @@ def transform_data(articles: pd.DataFrame,
         res.append(multi_hot_encode(get_lshash(tfidfed_text), 'lsh'))
     if source_count:
         res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
+    if sentiment:
+        res.append((build_sentiments(articles['text']),
+                   {0: 'trust', 1: 'fear', 2: 'negative', 3: 'sadness',
+                    4: 'anger', 5: 'surprise', 6: 'positive', 7: 'disgust',
+                    8: 'joy', 9: 'anticipation'}))
+
     features = hstack([r[0] for r in res]).tocsr()
     category_map = combine([r[1] for r in res])
     articles.drop(articles.index[articles_end:], inplace=True)
