@@ -122,6 +122,7 @@ def article_trainers():
                          ngram=1,
                          lshash=False,
                          title=True,
+                         sentiment=True,
                          start_date='2017-03-01',
                          end_date='2017-03-15')
     models = [(DecisionTreeClassifier, {}),
