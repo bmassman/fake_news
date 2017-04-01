@@ -4,7 +4,7 @@ Script to produce summary statistics for news articles.
 """
 import pandas as pd
 import seaborn as sns
-from code.build_df import build_df
+from fake_news.build_df import build_df
 
 
 def print_full(x):
