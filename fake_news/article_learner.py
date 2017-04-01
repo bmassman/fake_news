@@ -23,7 +23,8 @@ def train_model(data: ArticleDB,
                 learner: Type[ClassifierMixin],
                 param_grid: dict,
                 examples: bool = False,
-                ground_truth_as_test: bool = False) -> None:
+                ground_truth_as_test: bool = False,
+                probabilities: bool = False) -> None:
     """Trains classifier learner on data and reports test set accuracy."""
     learner = learner()
     X, y = data.X, data.y
@@ -35,7 +36,8 @@ def train_model(data: ArticleDB,
         X_train, X_test, y_train, y_test, df_train, df_test = (
             train_test_split(X, y, data.df, test_size=0.2))
     model = GridSearchCV(learner, param_grid).fit(X_train, y_train)
-    preds = model.predict(X_test)
+    best_model = model.best_estimator_
+    preds = best_model.predict(X_test)
     conf_mat = confusion_matrix(y_test, preds, labels=[1, 0])
     accuracy = np.mean(y_test == preds)
     learner_repr = repr(learner)[:repr(learner).find('(')]
@@ -48,6 +50,8 @@ def train_model(data: ArticleDB,
     print_top_vars(var_imp, 50, data.feature_names)
     if examples:
         article_examples(df_test, y_test, preds)
+    if probabilities and hasattr(best_model, 'predict_proba'):
+        test_probabilities(best_model, X_test, y_test)
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
@@ -107,6 +111,16 @@ def article_example_printer(category: str,
         print(f'\t\tText: {text}\n')
 
 
+def test_probabilities(model: ClassifierMixin, X: np.array, y: np.array):
+    """Print predicted probabilities and true label for each article."""
+    probs = model.predict_proba(X)
+    print('\tProbabilities')
+    for prob, label in zip(probs, y):
+        if ((prob[0] > prob[1] and label == 1) or
+                (prob[1] > prob[0] and label == 0)):
+            print(f'\t\tprob: {prob[0]:.2f} label: {label}')
+
+
 def article_trainers():
     """
     Run repeated models against article db to predict validity score for
@@ -131,8 +145,8 @@ def article_trainers():
               (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
               (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
     for classifier, param_grid in models:
-        train_model(articles, classifier, param_grid, examples=True,
-                    ground_truth_as_test=True)
+        train_model(articles, classifier, param_grid, examples=False,
+                    ground_truth_as_test=True, probabilities=True)
 
 if __name__ == '__main__':
     article_trainers()

@@ -2,6 +2,7 @@
 """
 Script to scrape internet news sites for articles.
 """
+import os
 import sqlite3
 import datetime as dt
 from typing import Iterator, Set
@@ -12,9 +13,10 @@ import newspaper
 import pytz
 from .article_language import detect_language
 
-URL_FILE_NAME = 'fake_news/scraper/news_sites.txt'
-DB_FILE_NAME = 'fake_news/articles.db'
-GROUND_TRUTH_FILE_NAME = 'fake_news/scraper/ground_truth_articles.csv'
+URL_FILE_NAME = os.path.join('fake_news', 'scraper', 'news_sites.txt')
+DB_FILE_NAME = os.path.join('fake_news', 'articles.db')
+GROUND_TRUTH_FILE_NAME = os.path.join('fake_news', 'scraper',
+                                      'ground_truth_articles.csv')
 
 
 def get_configuration() -> newspaper.Config:
