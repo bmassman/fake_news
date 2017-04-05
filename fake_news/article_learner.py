@@ -14,6 +14,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model.logistic import LogisticRegression
 from sklearn.svm import LinearSVC
+from sklearn.ensemble import VotingClassifier
 import numpy as np
 import pandas as pd
 from fake_news.article_db import ArticleDB
@@ -23,14 +24,16 @@ def train_model(data: ArticleDB,
                 learner: Type[ClassifierMixin],
                 param_grid: dict, *,
                 test_articles: Optional[ArticleDB] = None,
+                most_important_features: bool = False,
                 examples: bool = False,
                 ground_truth_as_test: bool = False,
-                probabilities: bool = False) -> None:
+                probabilities: bool = False) -> ClassifierMixin:
     """Trains classifier learner on data and reports test set accuracy."""
     if ground_truth_as_test and test_articles:
         raise ValueError('ground_truth_as_test must be False if test_articles'
                          'are supplied')
-    learner = learner()
+    if callable(learner):
+        learner = learner()
     X, y = data.X, data.y
     if ground_truth_as_test or test_articles:
         X_train = X
@@ -58,11 +61,13 @@ def train_model(data: ArticleDB,
     print(f'\tconfusion matrix: [{conf_mat[0]}')
     print(f'\t                   {conf_mat[1]}]')
     var_imp = variable_importance(model.best_estimator_)
-    print_top_vars(var_imp, 50, data.feature_names)
+    if most_important_features:
+        print_top_vars(var_imp, 50, data.feature_names)
     if examples:
         article_examples(df_test, y_test, preds)
     if probabilities and hasattr(best_model, 'predict_proba'):
         test_probabilities(best_model, X_test, y_test)
+    return best_model
 
 
 def variable_importance(estimator: Type[ClassifierMixin]) -> np.array:
@@ -151,16 +156,18 @@ def article_trainers():
                          sentiment=True,
                          start_date='2017-03-01',
                          end_date='2017-03-15')
-    articles, test_articles = articles.split_by_date('2017-03-12')
     models = [(DecisionTreeClassifier, {}),
               (RandomForestClassifier, {}),
               (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
               (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
               (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
+    trained_models = []
     for classifier, param_grid in models:
-        train_model(articles, classifier, param_grid,
-                    test_articles=test_articles, examples=False,
-                    ground_truth_as_test=False, probabilities=True)
+        res = train_model(articles, classifier, param_grid)
+        trained_models.append((str(res), res))
+    ensemble_learner = VotingClassifier(estimators=trained_models[:4],
+                                        voting='soft')
+    train_model(articles, ensemble_learner, {})
 
 if __name__ == '__main__':
     article_trainers()
