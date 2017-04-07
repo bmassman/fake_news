@@ -13,6 +13,7 @@ import pandas as pd
 
 DB_FILE_NAME = os.path.join('fake_news', 'articles.db')
 
+
 def get_url_base(row):
     """Return base url from article row."""
     url = row['url']
