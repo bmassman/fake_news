@@ -135,18 +135,23 @@ def test_probabilities(model: ClassifierMixin, X: np.array, y: pd.Series,
     print('\tProbabilities')
     df = pd.DataFrame({'prob': probs, 'label': y})
     step = 1 / bins
-    cut_labels = [str(round(step * f, 1)) for f in range(10)]
+    cut_labels = [round(step * f, 1) for f in range(10)]
     by_prob = (df.groupby(pd.cut(df['prob'], bins, labels=cut_labels))
                  .agg(['sum', 'count'])['label'])
-    print('\t\tprobs\t1\t0')
+    print('\t\tprobs\t1\t0\tacc')
     for index, row in by_prob.iloc[::-1].iterrows():
         ones = row['sum']
         if math.isnan(ones):
             ones = 0
         else:
             ones = int(ones)
-        zeros = int(row['count']) - ones
-        print(f'\t\t{index}\t{ones}\t{zeros}')
+        count = row['count']
+        zeros = int(count) - ones
+        if count > 0:
+            acc = zeros / count if index < 0.5 else ones / count
+        else:
+            acc = 0.0
+        print(f'\t\t{index}\t{ones}\t{zeros}\t{acc:.3f}')
 
 
 def article_trainers():
