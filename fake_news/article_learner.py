@@ -6,6 +6,7 @@ articles.
 from typing import Type, Sequence, Optional
 from operator import itemgetter
 from random import sample
+import math
 from sklearn.base import ClassifierMixin
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix
@@ -127,14 +128,25 @@ def article_example_printer(category: str,
         print(f'\t\tText: {text}\n')
 
 
-def test_probabilities(model: ClassifierMixin, X: np.array, y: np.array):
+def test_probabilities(model: ClassifierMixin, X: np.array, y: pd.Series,
+                       bins: int = 10):
     """Print predicted probabilities and true label for each article."""
-    probs = model.predict_proba(X)
+    probs = [p[1] for p in model.predict_proba(X)]
     print('\tProbabilities')
-    for prob, label in zip(probs, y):
-        if ((prob[0] > prob[1] and label == 1) or
-                (prob[1] > prob[0] and label == 0)):
-            print(f'\t\tprob: {prob[1]:.2f} label: {label}')
+    df = pd.DataFrame({'prob': probs, 'label': y})
+    step = 1 / bins
+    cut_labels = [str(round(step * f, 1)) for f in range(10)]
+    by_prob = (df.groupby(pd.cut(df['prob'], bins, labels=cut_labels))
+                 .agg(['sum', 'count'])['label'])
+    print('\t\tprobs\t1\t0')
+    for index, row in by_prob.iloc[::-1].iterrows():
+        ones = row['sum']
+        if math.isnan(ones):
+            ones = 0
+        else:
+            ones = int(ones)
+        zeros = int(row['count']) - ones
+        print(f'\t\t{index}\t{ones}\t{zeros}')
 
 
 def article_trainers():
@@ -155,7 +167,7 @@ def article_trainers():
                          title=True,
                          sentiment=True,
                          start_date='2017-03-01',
-                         end_date='2017-03-15')
+                         end_date='2017-03-03')
     models = [(DecisionTreeClassifier, {}),
               (RandomForestClassifier, {}),
               (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
@@ -163,7 +175,7 @@ def article_trainers():
               (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
     trained_models = []
     for classifier, param_grid in models:
-        res = train_model(articles, classifier, param_grid)
+        res = train_model(articles, classifier, param_grid, probabilities=True)
         trained_models.append((str(res), res))
     ensemble_learner = VotingClassifier(estimators=trained_models[:4],
                                         voting='soft')
