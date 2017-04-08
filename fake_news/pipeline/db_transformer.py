@@ -48,8 +48,7 @@ def tfidf_text(x: Sequence[str],
     Return sparse matrix encoding of TF-IDF encoding of x and dictionary
     mapping each token to a column number.
     """
-    if stop_words:
-        stop_words = 'english'
+    stop_words = 'english' if stop_words else None
     tfidf = TfidfVectorizer(ngram_range=(1, ngram), stop_words=stop_words)
     text = tfidf.fit_transform(x)
     token_list = tfidf.get_feature_names()
