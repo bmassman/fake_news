@@ -131,7 +131,15 @@ def get_misspellings(text: pd.Series) -> pd.Series:
 def get_grammar_mistakes(text: pd.Series) -> pd.Series:
     """Return Series of grammar mistake counts in text."""
     tool = language_check.LanguageTool('en-US')
-    return text.apply(lambda x: len(tool.check(x)))
+
+    def grammar_check(s: str) -> float:
+        """Return count of grammar mistakes normalized by word count."""
+        wc = len(s.split())
+        if wc == 0:
+            return 0.0
+        return len(tool.check(s)) / wc
+
+    return text.apply(grammar_check)
 
 
 def get_lshash(text: coo_matrix) -> List[str]:
@@ -229,9 +237,10 @@ def transform_data(articles: pd.DataFrame,
         res.append((get_source_count(articles['netloc']), {0: 'source_count'}))
     if sentiment:
         res.append((build_sentiments(articles['text']),
-                   {0: 'trust', 1: 'fear', 2: 'negative', 3: 'sadness',
-                    4: 'anger', 5: 'surprise', 6: 'positive', 7: 'disgust',
-                    8: 'joy', 9: 'anticipation'}))
+                   {0: 'sent_trust', 1: 'sent_fear', 2: 'sent_negative',
+                    3: 'sent_sadness', 4: 'sent_anger', 5: 'sent_surprise',
+                    6: 'sent_positive', 7: 'sent_disgust', 8: 'sent_joy',
+                    9: 'sent_anticipation'}))
 
     features = hstack([r[0] for r in res]).tocsr()
     category_map = combine([r[1] for r in res])

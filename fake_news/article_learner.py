@@ -154,11 +154,25 @@ def test_probabilities(model: ClassifierMixin, X: np.array, y: pd.Series,
         print(f'\t\t{index}\t{ones}\t{zeros}\t{acc:.3f}')
 
 
-def article_trainers():
+def article_trainers(articles: ArticleDB):
     """
     Run repeated models against article db to predict validity score for
     articles.
     """
+    models = [(DecisionTreeClassifier, {}),
+              (RandomForestClassifier, {}),
+              (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
+              (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
+              (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
+    trained_models = []
+    for classifier, param_grid in models:
+        res = train_model(articles, classifier, param_grid, probabilities=True)
+        trained_models.append((str(res), res))
+    ensemble_learner = VotingClassifier(estimators=trained_models[:4],
+                                        voting='soft')
+    train_model(articles, ensemble_learner, {})
+
+if __name__ == '__main__':
     articles = ArticleDB(domain_endings=False,
                          author=False,
                          source_count=False,
@@ -174,18 +188,4 @@ def article_trainers():
                          stop_words=False,
                          start_date='2017-03-01',
                          end_date='2017-03-25')
-    models = [(DecisionTreeClassifier, {}),
-              (RandomForestClassifier, {}),
-              (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),
-              (MultinomialNB, {'alpha': [0.1, 1.0, 10.0, 100.0]}),
-              (LinearSVC, {'C': [0.01, 0.1, 1, 10, 100]})]
-    trained_models = []
-    for classifier, param_grid in models:
-        res = train_model(articles, classifier, param_grid, probabilities=True)
-        trained_models.append((str(res), res))
-    ensemble_learner = VotingClassifier(estimators=trained_models[:4],
-                                        voting='soft')
-    train_model(articles, ensemble_learner, {})
-
-if __name__ == '__main__':
-    article_trainers()
+    article_trainers(articles)

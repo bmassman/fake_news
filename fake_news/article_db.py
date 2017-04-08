@@ -5,7 +5,8 @@ creating a trainable dataset for modeling.
 """
 from typing import Dict, Sequence
 from copy import deepcopy
-from scipy.sparse import coo_matrix
+from itertools import count
+from scipy.sparse import coo_matrix, csc_matrix, hstack
 import pandas as pd
 from .pipeline.build_df import build_df
 from .pipeline.db_cleaner import clean_data
@@ -70,8 +71,10 @@ class ArticleDB:
         self.sentiment = sentiment
         self.stop_words = stop_words
         self._X = None
+        self._full_X = None
         self._y = None
         self.feature_names = None
+        self._full_feature_names = None
         self.ground_truth_X = None
         self.ground_truth_y = None
         self.df = None
@@ -135,7 +138,7 @@ class ArticleDB:
 
     def split_by_date(self, date: str):
         """Return two ArticleDBs by splitting current ArticleDB by date."""
-        if not self._X:
+        if self._X is None:
             self._get_values()
         db1 = deepcopy(self)
         db2 = deepcopy(self)
@@ -149,6 +152,44 @@ class ArticleDB:
         db2.df = self.df[db2_rows]
         return db1, db2
 
+    def partial_X(self, **kwargs) -> None:
+        """
+        Set self.X to include subset of feature sets. The full value of X
+        is then stored in self._full_X.
+        """
+        if self._X is None:
+            self._get_values()
+        if self._full_X is None:
+            self._full_X = csc_matrix(deepcopy(self._X))
+            self._full_feature_names = self.feature_names
+        feature_map = {'author': 'auth',
+                       'tfidf': 'text',
+                       'tags': 'tag',
+                       'title': 'title',
+                       'domain_endings': 'domain',
+                       'word_count': 'word_count',
+                       'misspellings': 'misspellings',
+                       'grammar_mistakes': 'grammar_mistakes',
+                       'lshash': 'lsh',
+                       'source_count': 'source_count',
+                       'sentiment': 'sent'}
+        feature_sets = set()
+        for feature, include in kwargs.items():
+            if not include:
+                continue
+            if not getattr(self, feature):
+                raise ValueError('Cannot include feature that was not in'
+                                 'original X.')
+            feature_sets.add(feature_map[feature])
+        kept_cols = []
+        self.feature_names = {}
+        new_col = count()
+        for col, feature in self._full_feature_names.items():
+            if any(feature.startswith(prefix) for prefix in feature_sets):
+                kept_cols.append(col)
+                self.feature_names[next(new_col)] = feature
+        self._X = hstack([self._full_X.getcol(c) for c in kept_cols])
+
     def __repr__(self):
         db_vars = repr(self.__dict__)[1:-1]
         db_vars = db_vars.replace(': ', '=').replace("'", '')
@@ -156,7 +197,9 @@ class ArticleDB:
 
 
 if __name__ == '__main__':
-    article_db = ArticleDB(start_date='01-03-2017', end_date='02-03-2017')
-    X = article_db.X
-    y = article_db.y
-    print(article_db.feature_names)
+    article_db = ArticleDB(start_date='01-03-2017', end_date='02-03-2017', tfidf=False, author=False, title=False)
+    print(article_db.X.shape)
+    article_db.partial_X(sentiment=False, word_count=True)
+    print(article_db.X.shape)
+    article_db.partial_X(sentiment=True)
+    print(article_db.X.shape)
