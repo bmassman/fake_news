@@ -171,7 +171,7 @@ def article_trainers():
                          lshash=False,
                          title=True,
                          sentiment=True,
-                         stop_words=True,
+                         stop_words=False,
                          start_date='2017-03-01',
                          end_date='2017-03-25')
     models = [(DecisionTreeClassifier, {}),
