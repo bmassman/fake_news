@@ -129,8 +129,8 @@ def article_example_printer(category: str,
 
 
 def test_probabilities(model: ClassifierMixin, X: np.array, y: pd.Series,
-                       bins: int = 10):
-    """Print predicted probabilities and true label for each article."""
+                       bins: int = 10, threshold: float = 0.5):
+    """Print confusion matrix based on class probability."""
     probs = [p[1] for p in model.predict_proba(X)]
     print('\tProbabilities')
     df = pd.DataFrame({'prob': probs, 'label': y})
@@ -148,7 +148,7 @@ def test_probabilities(model: ClassifierMixin, X: np.array, y: pd.Series,
         count = row['count']
         zeros = int(count) - ones
         if count > 0:
-            acc = zeros / count if index < 0.5 else ones / count
+            acc = zeros / count if index < threshold else ones / count
         else:
             acc = 0.0
         print(f'\t\t{index}\t{ones}\t{zeros}\t{acc:.3f}')
@@ -171,8 +171,9 @@ def article_trainers():
                          lshash=False,
                          title=True,
                          sentiment=True,
+                         stop_words=True,
                          start_date='2017-03-01',
-                         end_date='2017-03-03')
+                         end_date='2017-03-25')
     models = [(DecisionTreeClassifier, {}),
               (RandomForestClassifier, {}),
               (LogisticRegression, {'C': [0.01, 0.1, 1, 10, 100]}),

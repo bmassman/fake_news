@@ -42,12 +42,15 @@ def multi_hot_encode(x: Sequence[str],
 
 def tfidf_text(x: Sequence[str],
                prefix: str,
-               ngram: int = 1) -> (coo_matrix, Dict[int, str]):
+               ngram: int = 1,
+               stop_words: bool = False) -> (coo_matrix, Dict[int, str]):
     """
     Return sparse matrix encoding of TF-IDF encoding of x and dictionary
     mapping each token to a column number.
     """
-    tfidf = TfidfVectorizer(ngram_range=(1, ngram))
+    if stop_words:
+        stop_words = 'english'
+    tfidf = TfidfVectorizer(ngram_range=(1, ngram), stop_words=stop_words)
     text = tfidf.fit_transform(x)
     token_list = tfidf.get_feature_names()
     text_map = {col: f'{prefix}_{token}'
@@ -180,7 +183,8 @@ def transform_data(articles: pd.DataFrame,
                    grammar_mistakes: bool,
                    lshash: bool,
                    source_count: bool,
-                   sentiment: bool) -> (csr_matrix, csr_matrix,
+                   sentiment: bool,
+                   stop_words: bool) -> (csr_matrix, csr_matrix,
                                            Dict[str, int],
                                            pd.Series, pd.Series):
     """
@@ -200,10 +204,11 @@ def transform_data(articles: pd.DataFrame,
     if tags:
         res.append(multi_hot_encode(articles['tags'], 'tag'))
     if tfidf:
-        tfidfed_text, tfidf_dict = tfidf_text(articles['text'], 'text', ngram)
+        tfidfed_text, tfidf_dict = tfidf_text(articles['text'], 'text', ngram,
+                                              stop_words)
         res.append((tfidfed_text, tfidf_dict))
     if title:
-        res.append(tfidf_text(articles['title'], 'title', ngram))
+        res.append(tfidf_text(articles['title'], 'title', ngram, stop_words))
     if domain_endings:
         articles['domain_ending'] = articles['url'].apply(get_domain_ending)
         res.append(multi_hot_encode(articles['domain_ending'], 'domain'))

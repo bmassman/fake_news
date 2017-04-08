@@ -30,7 +30,8 @@ class ArticleDB:
                  grammar_mistakes: bool = True,
                  lshash: bool = True,
                  source_count: bool = True,
-                 sentiment: bool = True) -> None:
+                 sentiment: bool = True,
+                 stop_words: bool = False) -> None:
         """
         Initialize parameters for ArticleDB object.
         :param start_date: first date to include in article dataset with format
@@ -50,6 +51,8 @@ class ArticleDB:
         :param source_count: add count of articles from the articles' source
                              to X
         :param sentiment: add sentiment scores to X
+        :param stop_words: remove English stop words from text and title tfidf
+                           features
         """
         self.start_date = start_date
         self.end_date = end_date
@@ -65,6 +68,7 @@ class ArticleDB:
         self.lshash = lshash
         self.source_count = source_count
         self.sentiment = sentiment
+        self.stop_words = stop_words
         self._X = None
         self._y = None
         self.feature_names = None
@@ -89,7 +93,8 @@ class ArticleDB:
                              grammar_mistakes=self.grammar_mistakes,
                              lshash=self.lshash,
                              source_count=self.source_count,
-                             sentiment=self.sentiment)
+                             sentiment=self.sentiment,
+                             stop_words=self.stop_words)
         (self._X, self.ground_truth_X, self.feature_names,
              self._y, self.ground_truth_y) = res
         return res
