@@ -7,6 +7,7 @@ from typing import Type, Sequence, Optional
 from operator import itemgetter
 from random import sample
 import math
+from itertools import product
 from sklearn.base import ClassifierMixin
 from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.metrics import confusion_matrix
@@ -176,16 +177,21 @@ if __name__ == '__main__':
     articles = ArticleDB(domain_endings=False,
                          author=False,
                          source_count=False,
-                         tags=False,
+                         tags=True,
                          misspellings=True,
-                         grammar_mistakes=False,
+                         grammar_mistakes=True,
                          word_count=True,
                          tfidf=True,
                          ngram=1,
-                         lshash=False,
+                         lshash=True,
                          title=True,
                          sentiment=True,
-                         stop_words=False,
-                         start_date='2017-03-01',
-                         end_date='2017-03-25')
-    article_trainers(articles)
+                         stop_words=False)
+    settings = product((True, False), repeat=8)
+    key_words = ['tags', 'misspellings', 'grammar_mistakes', 'word_count',
+                 'tfidf', 'lshash', 'title', 'sentiment']
+    for setting in settings:
+        kwargs = dict(zip(key_words, setting))
+        print(kwargs)
+        articles.partial_X(**kwargs)
+        article_trainers(articles)
