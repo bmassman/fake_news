@@ -2,7 +2,7 @@
 """
 Convert result text files into a csv.
 """
-from typing import List, Iterator
+from typing import List
 from itertools import chain
 import csv
 import re
@@ -46,8 +46,8 @@ def parse_learner_run(class_type: str,
     writer.writerow(row)
 
 
-def get_learner_chunk(in_file: str) -> Iterator[List[str]]:
-    """Return list containing each line of text."""
+def chunk_result_file(in_file: str):
+    """Chunk result text to discrete rows for parse_learner_run."""
     with open(in_file) as f:
         lines = f.readlines()
     learner_lines = []
@@ -69,4 +69,4 @@ def get_learner_chunk(in_file: str) -> Iterator[List[str]]:
 
 with open(OUT_FILE, 'w') as f:
     writer = csv.writer(f)
-    get_learner_chunk(IN_FILE)
+    chunk_result_file(IN_FILE)
