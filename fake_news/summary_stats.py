@@ -4,8 +4,7 @@ Script to produce summary statistics for news articles.
 """
 import pandas as pd
 import seaborn as sns
-from .pipeline.build_df import build_df
-
+from .article_db import ArticleDB
 
 def print_full(x):
     """Print all rows in Pandas DataFrame x."""
@@ -57,14 +56,29 @@ def calculate_missing_values(articles: pd.DataFrame):
     print_full(null_field_count)
 
 
+def word_count_by_label(articles: pd.DataFrame):
+    """Show graph of word counts by article label."""
+    palette = sns.color_palette(palette='hls', n_colors=2)
+    true_news_wc = articles[articles['labels'] == 0]['word_count']
+    fake_news_wc = articles[articles['labels'] == 1]['word_count']
+    sns.kdeplot(true_news_wc, bw=3, color=palette[0], label='True News')
+    sns.kdeplot(fake_news_wc, bw=3, color=palette[1], label='Fake News')
+    sns.plt.legend()
+    sns.plt.show()
+
+
 def show_stats():
     """Display statistics on articles."""
-    articles = build_df()
+    articles = ArticleDB(tfidf=False, author=False, tags=False, title=False,
+                         domain_endings=False, grammar_mistakes=False,
+                         word_count=True, misspellings=False, lshash=False,
+                         source_count=False, sentiment=False)
+    articles.X
+    articles = articles.df
     global_stats(articles)
     calculate_word_count_stats(articles)
     calculate_missing_values(articles)
-    sns.kdeplot(articles['word_count'], bw=1)
-    sns.plt.show()
+    word_count_by_label(articles)
 
 
 if __name__ == '__main__':

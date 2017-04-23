@@ -197,9 +197,29 @@ class ArticleDB:
 
 
 if __name__ == '__main__':
-    article_db = ArticleDB(start_date='01-03-2017', end_date='02-03-2017', tfidf=False, author=False, title=False)
+    article_db = ArticleDB(grammar_mistakes=False, misspellings=False,
+                           word_count=False, lshash=False, source_count=False,
+                           domain_endings=True)
     print(article_db.X.shape)
-    article_db.partial_X(sentiment=False, word_count=True)
-    print(article_db.X.shape)
-    article_db.partial_X(sentiment=True)
-    print(article_db.X.shape)
+    tfidf_count = 0
+    title_count = 0
+    author_count = 0
+    tag_count = 0
+    domain_count = 0
+    for feature in article_db.feature_names.values():
+        if feature.startswith('text'):
+            tfidf_count += 1
+        elif feature.startswith('title'):
+            title_count += 1
+        elif feature.startswith('auth'):
+            author_count += 1
+        elif feature.startswith('tag'):
+            tag_count += 1
+        elif feature.startswith('domain'):
+            domain_count += 1
+    print(f'tfidf: {tfidf_count}')
+    print(f'title: {title_count}')
+    print(f'author: {author_count}')
+    print(f'tag: {tag_count}')
+    print(f'domain: {domain_count}')
+
