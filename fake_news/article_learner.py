@@ -200,7 +200,6 @@ def feature_analysis():
 
 def time_slices():
     """Show results for time slices of article trainers."""
-    model = LogisticRegression
     test_dates = [('2017-03-01', '2017-03-02'),
                   ('2017-03-01', '2017-03-08'),
                   ('2017-03-01', '2017-03-15'),
@@ -223,8 +222,23 @@ def time_slices():
                              sentiment=False,
                              stop_words=False)
         train, test = articles.split_by_date(end)
-        train_model(train, model, {'C': [100]}, test_articles=test)
+        train_model(train, LogisticRegression, {'C': [100]},
+                    test_articles=test)
 
 
 if __name__ == '__main__':
-    time_slices()
+    articles = ArticleDB(domain_endings=False,
+                         author=False,
+                         source_count=False,
+                         tags=True,
+                         misspellings=True,
+                         grammar_mistakes=False,
+                         word_count=False,
+                         tfidf=True,
+                         ngram=1,
+                         lshash=False,
+                         title=True,
+                         sentiment=False,
+                         stop_words=False)
+    train_model(articles, LogisticRegression, {'C': [100]},
+                ground_truth_as_test=True, probabilities=True)
