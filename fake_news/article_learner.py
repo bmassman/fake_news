@@ -173,19 +173,20 @@ def article_trainers(articles: ArticleDB):
                                         voting='soft')
     train_model(articles, ensemble_learner, {})
 
-if __name__ == '__main__':
+
+def feature_analysis():
     articles = ArticleDB(domain_endings=False,
                          author=False,
                          source_count=False,
                          tags=True,
                          misspellings=True,
-                         grammar_mistakes=True,
-                         word_count=True,
+                         grammar_mistakes=False,
+                         word_count=False,
                          tfidf=True,
                          ngram=1,
-                         lshash=True,
+                         lshash=False,
                          title=True,
-                         sentiment=True,
+                         sentiment=False,
                          stop_words=False)
     settings = product((True, False), repeat=8)
     key_words = ['tags', 'misspellings', 'grammar_mistakes', 'word_count',
@@ -195,3 +196,35 @@ if __name__ == '__main__':
         print(kwargs)
         articles.partial_X(**kwargs)
         article_trainers(articles)
+
+
+def time_slices():
+    """Show results for time slices of article trainers."""
+    model = LogisticRegression
+    test_dates = [('2017-03-01', '2017-03-02'),
+                  ('2017-03-01', '2017-03-08'),
+                  ('2017-03-01', '2017-03-15'),
+                  ('2017-03-01', '2017-03-22'),
+                  ('2017-03-01', '2017-03-29')]
+    for start, end in test_dates:
+        print(f'From {start} to {end}')
+        articles = ArticleDB(start_date=start, end_date=end,
+                             domain_endings=False,
+                             author=False,
+                             source_count=False,
+                             tags=True,
+                             misspellings=True,
+                             grammar_mistakes=False,
+                             word_count=False,
+                             tfidf=True,
+                             ngram=1,
+                             lshash=False,
+                             title=True,
+                             sentiment=False,
+                             stop_words=False)
+        train, test = articles.split_by_date(end)
+        train_model(train, model, {'C': [100]}, test_articles=test)
+
+
+if __name__ == '__main__':
+    time_slices()
