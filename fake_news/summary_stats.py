@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 from .article_db import ArticleDB
 
+
 def print_full(x):
     """Print all rows in Pandas DataFrame x."""
     pd.set_option('display.max_rows', len(x))
@@ -44,6 +45,14 @@ def calculate_word_count_stats(articles: pd.DataFrame):
     sns.plt.show()
 
 
+def show_articles_by_source(articles: pd.DataFrame):
+    """Show boxplot comparing articles by source for fake and true news."""
+    articles['count'] = (articles.groupby(['base_url'])['url']
+                                 .transform('count'))
+    sns.boxplot(x='labels', y='count', data=articles)
+    sns.plt.show()
+
+
 def calculate_missing_values(articles: pd.DataFrame):
     """Calculate count of nulls in each column."""
     def null_fields(x: pd.Series) -> pd.Series:
@@ -79,6 +88,7 @@ def show_stats():
     calculate_word_count_stats(articles)
     calculate_missing_values(articles)
     word_count_by_label(articles)
+    show_articles_by_source(articles)
 
 
 if __name__ == '__main__':
