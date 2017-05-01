@@ -51,8 +51,8 @@ def response_surface_analysis(df):
                                   & (df['classifier'] == classifier)]
                 wo_feature = df[(df[feature] == 0)
                                 & (df['classifier'] == classifier)]
-                acc_diff = (with_feature['test_accuracy'].mean()
-                            - wo_feature['test_accuracy'].mean())
+                acc_diff = (with_feature['test_accuracy'].sum()
+                            - wo_feature['test_accuracy'].sum())
                 yield classifier, feature, acc_diff
 
     results = pd.DataFrame([res for res in tally_results(df)],
