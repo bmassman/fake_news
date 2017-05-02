@@ -46,14 +46,15 @@ def response_surface_analysis(df):
         classifiers = ['Decision Tree', 'Linear SVC', 'Logistic Regression',
                        'Multinomial NB', 'Random Forest', 'Voting Classifier']
         for classifier in classifiers:
+            from_class = df['classifier'] == classifier
+            class_mean = df[from_class]['test_accuracy'].mean()
             for feature in features:
-                with_feature = df[(df[feature] == 1)
-                                  & (df['classifier'] == classifier)]
-                wo_feature = df[(df[feature] == 0)
-                                & (df['classifier'] == classifier)]
+                with_feature = df[(df[feature] == 1) & from_class]
+                wo_feature = df[(df[feature] == 0) & from_class]
                 acc_diff = (with_feature['test_accuracy'].sum()
                             - wo_feature['test_accuracy'].sum())
-                yield classifier, feature, acc_diff
+                mean_diff = acc_diff / 255 + class_mean
+                yield classifier, feature, mean_diff
 
     results = pd.DataFrame([res for res in tally_results(df)],
                            columns=['classifier', 'feature', 'effect'])
@@ -71,7 +72,7 @@ def response_surface_analysis(df):
                                         categories=feat_order)
     results.sort_values(['feature', 'classifier'], inplace=True)
     print(results)
-    sns.barplot('feature', 'effect', hue='classifier', data=results)
+    sns.stripplot('effect', 'feature', hue='classifier', data=results)
     sns.plt.legend()
     sns.plt.show()
 
