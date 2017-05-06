@@ -47,9 +47,11 @@ def calculate_word_count_stats(articles: pd.DataFrame):
 
 def show_articles_by_source(articles: pd.DataFrame):
     """Show boxplot comparing articles by source for fake and true news."""
-    articles['count'] = (articles.groupby(['base_url'])['url']
-                                 .transform('count'))
-    sns.boxplot(x='labels', y='count', data=articles)
+    by_source = (articles.groupby(['base_url', 'labels'])
+                         .size()
+                         .reset_index(name='count'))
+    by_source = by_source[by_source['count'] > 100]
+    sns.boxplot(x='labels', y='count', data=by_source)
     sns.plt.show()
 
 
